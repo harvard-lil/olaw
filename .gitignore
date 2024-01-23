@@ -1,0 +1,8 @@
+.env
+*.pyc
+.DS_Store
+chromadb/
+test.py
+TODO.md
+runs/
+_*/

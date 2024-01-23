@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "open-legal-rag"
+version = "0.1.0"
+description = ""
+authors = ["Harvard Library Innovation Lab"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+chromadb = "^0.4.14"
+click = "^8.1.7"
+flask = "^3.0.0"
+langchain = "^0.0.327"
+litellm = "^1.10.4"
+python = "^3.11"
+python-dateutil = "^2.8.2"
+python-dotenv = "^1.0.0"
+python-slugify = "^8.0.1"
+requests = "^2.31.0"
+sentence-transformers = "^2.2.2"
+torch = "^2.1.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.10.1"
+flake8 = "^6.1.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.black]
+line-length = 100
