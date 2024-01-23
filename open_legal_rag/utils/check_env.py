@@ -12,7 +12,6 @@ def check_env() -> bool:
     environ = os.environ
 
     for prop in [
-        "VISUALIZATIONS_FOLDER_PATH",
         "VECTOR_SEARCH_PATH",
         "VECTOR_SEARCH_COLLECTION_NAME",
         "VECTOR_SEARCH_SENTENCE_TRANSFORMER_MODEL",

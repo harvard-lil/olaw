@@ -19,6 +19,7 @@ python-slugify = "^8.0.1"
 requests = "^2.31.0"
 sentence-transformers = "^2.2.2"
 torch = "^2.1.1"
+datasets = "^2.16.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.10.1"
