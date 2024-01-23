@@ -11,9 +11,50 @@ from open_legal_rag import utils
 
 load_dotenv()
 
-# TODO
-COLD_CASES_RECORD_DATA = {}
-""" Shape of the data we extract and store from COLD Cases records. """
+COLD_CASES_OPINION_DATA = {
+    "case_id": None,
+    "case_date_filed": None,
+    "case_name": None,
+    "case_judges": None,
+    "case_attorneys": None,
+    "court_name": None,
+    "court_type": None,
+    "court_jurisdiction_code": None,
+    "opinion_id": None,
+    "opinion_author": None,
+    "opinion_text": None,
+}
+"""
+    Shape of the data we extract and store from COLD Cases records.
+    More info: https://huggingface.co/datasets/harvard-lil/cold-cases
+"""
+
+COLD_CASES_JURISDICTION_CODES = {
+    "F": "Federal Appellate",
+    "FD": "Federal District",
+    "FB": "Federal Bankruptcy",
+    "FBP": "Federal Bankruptcy Panel",
+    "FS": "Federal Special",
+    "S": "State Supreme",
+    "SA": "State Appellate",
+    "ST": "State Trial",
+    "SS": "State Special",
+    "TRS": "Tribal Supreme",
+    "TRA": "Tribal Appellate",
+    "TRT": "Tribal Trial",
+    "TRX": "Tribal Special",
+    "TS": "Territory Supreme",
+    "TA": "Territory Appellate",
+    "TT": "Territory Trial",
+    "TSP": "Territory Special",
+    "SAG": "State Attorney General",
+    "MA": "Military Appellate",
+    "MT": "Military Trial",
+    "C": "Committee",
+    "I": "International",
+    "T": "Testing",
+}
+""" Hashmap which can be used to associate jurisdiction types shortcodes to their full names. """
 
 
 def create_app():

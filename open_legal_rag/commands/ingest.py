@@ -113,7 +113,7 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
     )
 
     # Loading COLD Cases
-    click.echo(f"Loading COLD Cases")
+    click.echo("Loading COLD Cases")
     cold_dataset = load_dataset("harvard-lil/cold-cases", split="train")
 
     for entry in cold_dataset:
