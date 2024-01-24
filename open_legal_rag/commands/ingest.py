@@ -133,14 +133,14 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
         # Court jurisdiction filter
         if court_jurisdiction and case["court_jurisdiction"] != court_jurisdiction:
             click.echo(
-                f"#{case['id']} --court-jurisdiction does not match filter ({case['court_jurisdiction']} vs {court_jurisdiction}) - Skipping."  # noqa
+                f"#{case['id']} --court-jurisdiction does not match filter ({case['court_jurisdiction']} != {court_jurisdiction}) - Skipping."  # noqa
             )
             continue
 
         # Court type filter
         if court_type and case["court_type"] != court_type:
             click.echo(
-                f"#{case['id']} --court-type does not match filter ({case['court_type']} vs {court_type}) - Skipping."  # noqa
+                f"#{case['id']} --court-type does not match filter ({case['court_type']} != {court_type}) - Skipping."  # noqa
             )
             continue
 
