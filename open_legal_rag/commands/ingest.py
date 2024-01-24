@@ -13,7 +13,7 @@ from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import SentenceTransformersTokenTextSplitter
 from flask import current_app
 
-from open_legal_rag import COLD_CASES_OPINION_DATA, COLD_CASES_JURISDICTION_CODES
+from open_legal_rag import COLD_CASES_OPINION_DATA, COLD_CASES_COURT_TYPE_CODES
 
 
 @current_app.cli.command("ingest")
@@ -126,7 +126,7 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
         click.echo(f"🔍 Case #{case['id']}")
 
         # Limit filter
-        if limit > 0 and i > limit:
+        if limit > 0 and i >= limit:
             click.echo(f"--limit ({limit}) reached. Interrupting.")
             break
 
@@ -207,6 +207,12 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
 
                 if case["attorneys"]:
                     metadata["case_attorneys"] = case["attorneys"]
+
+                if case["court_type"] and COLD_CASES_COURT_TYPE_CODES.get(case["court_type"]):
+                    metadata["court_type"] = COLD_CASES_COURT_TYPE_CODES[case["court_type"]]
+
+                if case["court_jurisdiction"]:
+                    metadata["court_jurisdiction"] = case["court_jurisdiction"]
 
                 if case["court_full_name"]:
                     metadata["court_name"] = case["court_full_name"]

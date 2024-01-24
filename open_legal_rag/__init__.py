@@ -29,7 +29,7 @@ COLD_CASES_OPINION_DATA = {
     More info: https://huggingface.co/datasets/harvard-lil/cold-cases
 """
 
-COLD_CASES_JURISDICTION_CODES = {
+COLD_CASES_COURT_TYPE_CODES = {
     "F": "Federal Appellate",
     "FD": "Federal District",
     "FB": "Federal Bankruptcy",
@@ -54,7 +54,7 @@ COLD_CASES_JURISDICTION_CODES = {
     "I": "International",
     "T": "Testing",
 }
-""" Hashmap which can be used to associate jurisdiction types shortcodes to their full names. """
+""" Hashmap which can be used to associate court types shortcodes to their full names. """
 
 
 def create_app():
