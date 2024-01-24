@@ -2,9 +2,8 @@
 `commands.ingest` module: Controller for the `ingest` CLI command.
 """
 import os
-import glob
 import traceback
-import io
+import datetime
 from shutil import rmtree
 
 import click
@@ -14,7 +13,7 @@ from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import SentenceTransformersTokenTextSplitter
 from flask import current_app
 
-from open_legal_rag import COLD_CASES_RECORD_DATA
+from open_legal_rag import COLD_CASES_OPINION_DATA, COLD_CASES_JURISDICTION_CODES
 
 
 @current_app.cli.command("ingest")
@@ -61,6 +60,10 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
     chroma_client = None
     chroma_collection = None
     cold_dataset = None
+
+    cases_ingested = 0
+    opinions_ingested = 0
+    embeddings_stored = 0
 
     # Filter input params
     if court_jurisdiction is not None:
@@ -112,9 +115,128 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
         metadata={"hnsw:space": environ["VECTOR_SEARCH_DISTANCE_FUNCTION"]},
     )
 
-    # Loading COLD Cases
+    # Load COLD Cases
     click.echo("Loading COLD Cases")
     cold_dataset = load_dataset("harvard-lil/cold-cases", split="train")
 
-    for entry in cold_dataset:
-        pass
+    click.echo(f"📚 {len(cold_dataset)} cases found")
+
+    # Generate embeddings for opinions and store them in vector store
+    for i, case in enumerate(cold_dataset):
+        click.echo(f"🔍 Case #{case['id']}")
+
+        # Limit filter
+        if limit > 0 and i > limit:
+            click.echo(f"--limit ({limit}) reached. Interrupting.")
+            break
+
+        # Court jurisdiction filter
+        if court_jurisdiction and case["court_jurisdiction"] != court_jurisdiction:
+            click.echo(
+                f"#{case['id']} --court-jurisdiction does not match filter ({case['court_jurisdiction']} vs {court_jurisdiction}) - Skipping."  # noqa
+            )
+            continue
+
+        # Court type filter
+        if court_type and case["court_type"] != court_type:
+            click.echo(
+                f"#{case['id']} --court-type does not match filter ({case['court_type']} vs {court_type}) - Skipping."  # noqa
+            )
+            continue
+
+        # Year filter
+        if (year_min or year_max) and not isinstance(case["date_filed"], datetime.date):
+            click.echo(f"#{case['id']} has no date_filed: cannot check --year_min/max - Skipping.")
+            continue
+
+        if year_min and case["date_filed"].year < year_min:
+            click.echo(f"#{case['date_filed']} before year_min {year_min} - Skipping.")
+            continue
+
+        if year_max and case["date_filed"].year > year_max:
+            click.echo(f"#{case['date_filed']} after year_max {year_max} - Skipping.")
+            continue
+
+        # For each opinion:
+        # - Split text using model-appropriate text-splitter
+        # - Generate embeddings for resulting chunks
+        # - Store resulting embeddings + meta data in vector store
+        for opinion in case["opinions"]:
+            case_plus_opinion_id = f"- Opinion #{opinion['opinion_id']} for case #{case['id']}"
+
+            if not opinion["opinion_text"] or not opinion["opinion_text"].strip():
+                click.echo(f"{case_plus_opinion_id} has no text - Skipping.")
+                continue
+
+            # Split chunks
+            text_chunks = text_splitter.split_text(opinion["opinion_text"])
+            click.echo(f"{case_plus_opinion_id} -> {len(text_chunks)} chunks.")
+
+            if not text_chunks:
+                continue
+
+            # Add VECTOR_SEARCH_CHUNK_PREFIX to every chunk
+            for i in range(0, len(text_chunks)):
+                text_chunks[i] = chunk_prefix + text_chunks[i]
+
+            # Generate embeddings and metadata for each chunk
+            documents = []
+            metadatas = []
+            ids = []
+
+            embeddings = embedding_model.encode(
+                text_chunks,
+                normalize_embeddings=normalize_embeddings,
+            )
+
+            for i, text_chunk in enumerate(text_chunks):
+                documents.append(str(case["id"]))
+                ids.append(f"{case['id']}-{opinion['opinion_id']}-{i}")
+
+                metadata = dict(COLD_CASES_OPINION_DATA)
+                metadata["case_id"] = case["id"]
+
+                if case["date_filed"]:
+                    metadata["case_date_filed"] = str(case["date_filed"])
+
+                if case["case_name"]:
+                    metadata["case_name"] = case["case_name"]
+
+                if case["judges"]:
+                    metadata["case_judges"] = case["judges"]
+
+                if case["attorneys"]:
+                    metadata["case_attorneys"] = case["attorneys"]
+
+                if case["court_full_name"]:
+                    metadata["court_name"] = case["court_full_name"]
+
+                metadata["opinion_id"] = opinion["opinion_id"]
+
+                if opinion["author_str"]:
+                    metadata["opinion_author"] = opinion["author_str"]
+
+                metadata["opinion_text"] = text_chunk[len(chunk_prefix) :]  # noqa
+
+                metadatas.append(metadata)
+
+            embeddings = embeddings.tolist()
+
+            # Store embeddings and metadata
+            chroma_collection.add(
+                documents=documents,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                ids=ids,
+            )
+
+            opinions_ingested += 1
+            embeddings_stored += len(embeddings)
+
+        cases_ingested += 1
+
+    # Summary
+    click.echo(80 * "-")
+    click.echo(f"{cases_ingested} cases ingested.")
+    click.echo(f"{opinions_ingested} opinions ingested.")
+    click.echo(f"{embeddings_stored} embeddings stored.")

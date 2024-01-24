@@ -12,17 +12,17 @@ from open_legal_rag import utils
 load_dotenv()
 
 COLD_CASES_OPINION_DATA = {
-    "case_id": None,
-    "case_date_filed": None,
-    "case_name": None,
-    "case_judges": None,
-    "case_attorneys": None,
-    "court_name": None,
-    "court_type": None,
-    "court_jurisdiction_code": None,
-    "opinion_id": None,
-    "opinion_author": None,
-    "opinion_text": None,
+    "case_id": "",
+    "case_date_filed": "",
+    "case_name": "",
+    "case_judges": "",
+    "case_attorneys": "",
+    "court_name": "",
+    "court_type": "",
+    "court_jurisdiction": "",
+    "opinion_id": "",
+    "opinion_author": "",
+    "opinion_text": "",
 }
 """
     Shape of the data we extract and store from COLD Cases records.
