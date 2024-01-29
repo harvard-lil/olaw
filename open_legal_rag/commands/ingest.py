@@ -165,7 +165,6 @@ def ingest(
             continue
 
         # For each opinion:
-        # - If flag is on: summarize opinion text
         # - Split text using model-appropriate text-splitter
         # - Generate embeddings for resulting chunks
         # - Store resulting embeddings + meta data in vector store
