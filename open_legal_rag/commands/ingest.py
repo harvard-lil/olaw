@@ -193,18 +193,18 @@ def ingest(
             documents = []
             metadatas = []
             ids = []
+            embeddings = []
 
-            embeddings = embedding_model.encode(
-                text_chunks,
-                normalize_embeddings=NORMALIZE_EMBEDDINGS,
-            )
-            embeddings = embeddings.tolist()
-
-            for i, text_chunk in enumerate(text_chunks):
+            for i, text_chunk in enumerate(text_chunks):  # 1 metadata entry per chunk
                 documents.append(str(case["id"]))
                 ids.append(f"{case['id']}-{opinion['opinion_id']}-{i}")
                 metadata = generate_metadata_for_opinion_text_chunk(case, opinion, text_chunk)
                 metadatas.append(metadata)
+
+            embeddings = embedding_model.encode(
+                text_chunks,
+                normalize_embeddings=NORMALIZE_EMBEDDINGS,
+            ).tolist()  # 1 embedding per chunk
 
             # Store embeddings and metadata
             chroma_collection.add(
