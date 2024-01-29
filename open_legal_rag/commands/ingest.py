@@ -8,6 +8,7 @@ from shutil import rmtree
 
 import click
 import chromadb
+import litellm
 from datasets import load_dataset
 from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import SentenceTransformersTokenTextSplitter
@@ -15,38 +16,63 @@ from flask import current_app
 
 from open_legal_rag import COLD_CASES_OPINION_DATA, COLD_CASES_COURT_TYPE_CODES
 
+litellm.telemetry = False
+
 NORMALIZE_EMBEDDINGS = os.environ["VECTOR_SEARCH_NORMALIZE_EMBEDDINGS"] == "true"
 
 VECTOR_SEARCH_CHUNK_PREFIX = os.environ["VECTOR_SEARCH_CHUNK_PREFIX"]
 
+SUMMARIZATION_MODEL = os.environ["SUMMARIZATION_MODEL"]
+
+SUMMARIZATION_MODEL_TEMPERATURE = os.environ["SUMMARIZATION_MODEL_TEMPERATURE"]
+
+SUMMARIZATION_MAX_TOKENS = os.environ["SUMMARIZATION_MAX_TOKENS"]
+
+SUMMARIZATION_PROMPT = os.environ["SUMMARIZATION_PROMPT"]
+
+SUMMARIZATION_EXCERPT_TEMPLATE = os.environ["SUMMARIZATION_EXCERPT_TEMPLATE"]
+
 
 @current_app.cli.command("ingest")
 @click.option(
+    "--summarize",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="If true, will try to generate a summary for each case. Only the summary will be saved.",
+)
+@click.option(
     "--court-jurisdiction",
     default=None,
+    type=str,
     help="If set, will be used to filter cases by `court_jurisdiction`. Exact match. See https://huggingface.co/datasets/harvard-lil/cold-cases for details.",
 )
 @click.option(
     "--court-type",
     default=None,
+    type=str,
     help="If set, will be used to filter cases by `court_type`. Exact match. See https://huggingface.co/datasets/harvard-lil/cold-cases for details.",
 )
 @click.option(
     "--year-min",
     default=None,
+    type=int,
     help="If set, will be used to filter cases by `date_filled`.",
 )
 @click.option(
     "--year-max",
     default=None,
+    type=int,
     help="If set, will be used to filter cases by `date_filled`.",
 )
 @click.option(
     "--limit",
     default=0,
+    type=int,
     help="If set and > 0, only processes up to X entries from COLD Cases dataset.",
 )
 def ingest(
+    summarize=False,
     court_jurisdiction=None,
     court_type=None,
     year_min=None,
@@ -73,26 +99,12 @@ def ingest(
     embeddings_stored = 0
 
     # Filter input params
-    if court_jurisdiction is not None:
-        court_jurisdiction = str(court_jurisdiction)
-
-    if court_type is not None:
-        court_type = str(court_type)
-
-    if year_min is not None:
-        year_min = int(year_min)
-
-    if year_max is not None:
-        year_max = int(year_max)
-
     if year_min and year_max:
         try:
             assert year_min < year_max
         except Exception:
             click.echo("year_min must be inferior to year_max")
             exit(1)
-
-    limit = int(limit)
 
     # Cleanup
     rmtree(environ["VECTOR_SEARCH_PATH"], ignore_errors=True)
@@ -157,11 +169,11 @@ def ingest(
             continue
 
         if year_min and case["date_filed"].year < year_min:
-            click.echo(f"#{case['date_filed']} before year_min {year_min} - Skipping.")
+            click.echo(f"{case['date_filed']} before year_min {year_min} - Skipping.")
             continue
 
         if year_max and case["date_filed"].year > year_max:
-            click.echo(f"#{case['date_filed']} after year_max {year_max} - Skipping.")
+            click.echo(f"{case['date_filed']} after year_max {year_max} - Skipping.")
             continue
 
         # For each opinion:
@@ -169,7 +181,7 @@ def ingest(
         # - Generate embeddings for resulting chunks
         # - Store resulting embeddings + meta data in vector store
         for opinion in case["opinions"]:
-            case_plus_opinion_id = f"- Opinion #{opinion['opinion_id']} for case #{case['id']}"
+            case_plus_opinion_id = f"Opinion #{opinion['opinion_id']} for case #{case['id']}"
             opinion_text = None
 
             if not opinion["opinion_text"] or not opinion["opinion_text"].strip():
@@ -178,9 +190,19 @@ def ingest(
 
             opinion_text = opinion["opinion_text"]
 
-            # Split chunks
+            # Summarize (optional)
+            if summarize is True:
+                try:
+                    click.echo(f"{case_plus_opinion_id} -> Summarizing using {SUMMARIZATION_MODEL}")
+                    opinion_text = summarize_opinion_text(case, opinion_text)
+                except Exception:
+                    click.echo(traceback.format_exc())
+                    click.echo(f"{case_plus_opinion_id} could not be summarized - Skipping")
+                    continue
+
+            # Split into chunks
             text_chunks = text_splitter.split_text(opinion_text)
-            click.echo(f"{case_plus_opinion_id} -> {len(text_chunks)} chunks.")
+            click.echo(f"{case_plus_opinion_id} -> Split into {len(text_chunks)} chunk(s).")
 
             if not text_chunks:
                 continue
@@ -195,16 +217,18 @@ def ingest(
             ids = []
             embeddings = []
 
-            for i, text_chunk in enumerate(text_chunks):  # 1 metadata entry per chunk
+            # 1 metadata / document / id object per chunk
+            for i, text_chunk in enumerate(text_chunks):
                 documents.append(str(case["id"]))
                 ids.append(f"{case['id']}-{opinion['opinion_id']}-{i}")
                 metadata = generate_metadata_for_opinion_text_chunk(case, opinion, text_chunk)
                 metadatas.append(metadata)
 
+            # 1 embedding per chunk
             embeddings = embedding_model.encode(
                 text_chunks,
                 normalize_embeddings=NORMALIZE_EMBEDDINGS,
-            ).tolist()  # 1 embedding per chunk
+            ).tolist()
 
             # Store embeddings and metadata
             chroma_collection.add(
@@ -224,6 +248,37 @@ def ingest(
     click.echo(f"{cases_ingested} cases ingested.")
     click.echo(f"{opinions_ingested} opinions ingested.")
     click.echo(f"{embeddings_stored} embeddings stored.")
+
+
+def summarize_opinion_text(case: dict, opinion_text: str) -> str:
+    """
+    Attempts to summarize the text of an opinion using LiteLLM.
+    See summarization settings in .env.
+    """
+    summary = ""
+    intro = SUMMARIZATION_EXCERPT_TEMPLATE
+
+    # Generate summary
+    response = litellm.completion(
+        model=SUMMARIZATION_MODEL,
+        messages=[{"role": "user", "content": f"{SUMMARIZATION_PROMPT}\n{opinion_text}"}],
+        temperature=float(SUMMARIZATION_MODEL_TEMPERATURE),
+        max_tokens=int(SUMMARIZATION_MAX_TOKENS),
+        api_base=os.environ["OLLAMA_API_URL"] if SUMMARIZATION_MODEL.startswith("ollama") else None,
+    )
+
+    summary = response["choices"][0]["message"]["content"]
+
+    # Prepare contextual intro
+    if case["case_name"]:
+        intro = intro.replace("{case_name}", case["case_name"])
+    else:
+        intro = intro.replace("{case_name}", case["slug"])
+
+    if case["court_full_name"]:
+        intro = intro.replace("{court_full_name}", case["court_full_name"])
+
+    return f"{intro} {summary}"
 
 
 def generate_metadata_for_opinion_text_chunk(case: dict, opinion: dict, text_chunk: str) -> dict:
