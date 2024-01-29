@@ -15,6 +15,10 @@ from flask import current_app
 
 from open_legal_rag import COLD_CASES_OPINION_DATA, COLD_CASES_COURT_TYPE_CODES
 
+NORMALIZE_EMBEDDINGS = os.environ["VECTOR_SEARCH_NORMALIZE_EMBEDDINGS"] == "true"
+
+VECTOR_SEARCH_CHUNK_PREFIX = os.environ["VECTOR_SEARCH_CHUNK_PREFIX"]
+
 
 @current_app.cli.command("ingest")
 @click.option(
@@ -42,7 +46,13 @@ from open_legal_rag import COLD_CASES_OPINION_DATA, COLD_CASES_COURT_TYPE_CODES
     default=0,
     help="If set and > 0, only processes up to X entries from COLD Cases dataset.",
 )
-def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=None, limit=0) -> None:
+def ingest(
+    court_jurisdiction=None,
+    court_type=None,
+    year_min=None,
+    year_max=None,
+    limit=0,
+) -> None:
     """
     Generates embeddings and metadata for a subset of COLD Cases.
 
@@ -51,9 +61,6 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
     See: options in .env.example
     """
     environ = os.environ
-
-    normalize_embeddings = environ["VECTOR_SEARCH_NORMALIZE_EMBEDDINGS"] == "true"
-    chunk_prefix = environ["VECTOR_SEARCH_CHUNK_PREFIX"]
 
     embedding_model = None
     text_splitter = None
@@ -158,18 +165,22 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
             continue
 
         # For each opinion:
+        # - If flag is on: summarize opinion text
         # - Split text using model-appropriate text-splitter
         # - Generate embeddings for resulting chunks
         # - Store resulting embeddings + meta data in vector store
         for opinion in case["opinions"]:
             case_plus_opinion_id = f"- Opinion #{opinion['opinion_id']} for case #{case['id']}"
+            opinion_text = None
 
             if not opinion["opinion_text"] or not opinion["opinion_text"].strip():
                 click.echo(f"{case_plus_opinion_id} has no text - Skipping.")
                 continue
 
+            opinion_text = opinion["opinion_text"]
+
             # Split chunks
-            text_chunks = text_splitter.split_text(opinion["opinion_text"])
+            text_chunks = text_splitter.split_text(opinion_text)
             click.echo(f"{case_plus_opinion_id} -> {len(text_chunks)} chunks.")
 
             if not text_chunks:
@@ -177,7 +188,7 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
 
             # Add VECTOR_SEARCH_CHUNK_PREFIX to every chunk
             for i in range(0, len(text_chunks)):
-                text_chunks[i] = chunk_prefix + text_chunks[i]
+                text_chunks[i] = VECTOR_SEARCH_CHUNK_PREFIX + text_chunks[i]
 
             # Generate embeddings and metadata for each chunk
             documents = []
@@ -186,47 +197,15 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
 
             embeddings = embedding_model.encode(
                 text_chunks,
-                normalize_embeddings=normalize_embeddings,
+                normalize_embeddings=NORMALIZE_EMBEDDINGS,
             )
+            embeddings = embeddings.tolist()
 
             for i, text_chunk in enumerate(text_chunks):
                 documents.append(str(case["id"]))
                 ids.append(f"{case['id']}-{opinion['opinion_id']}-{i}")
-
-                metadata = dict(COLD_CASES_OPINION_DATA)
-                metadata["case_id"] = case["id"]
-
-                if case["date_filed"]:
-                    metadata["case_date_filed"] = str(case["date_filed"])
-
-                if case["case_name"]:
-                    metadata["case_name"] = case["case_name"]
-
-                if case["judges"]:
-                    metadata["case_judges"] = case["judges"]
-
-                if case["attorneys"]:
-                    metadata["case_attorneys"] = case["attorneys"]
-
-                if case["court_type"] and COLD_CASES_COURT_TYPE_CODES.get(case["court_type"]):
-                    metadata["court_type"] = COLD_CASES_COURT_TYPE_CODES[case["court_type"]]
-
-                if case["court_jurisdiction"]:
-                    metadata["court_jurisdiction"] = case["court_jurisdiction"]
-
-                if case["court_full_name"]:
-                    metadata["court_name"] = case["court_full_name"]
-
-                metadata["opinion_id"] = opinion["opinion_id"]
-
-                if opinion["author_str"]:
-                    metadata["opinion_author"] = opinion["author_str"]
-
-                metadata["opinion_text"] = text_chunk[len(chunk_prefix) :]  # noqa
-
+                metadata = generate_metadata_for_opinion_text_chunk(case, opinion, text_chunk)
                 metadatas.append(metadata)
-
-            embeddings = embeddings.tolist()
 
             # Store embeddings and metadata
             chroma_collection.add(
@@ -246,3 +225,46 @@ def ingest(court_jurisdiction=None, court_type=None, year_min=None, year_max=Non
     click.echo(f"{cases_ingested} cases ingested.")
     click.echo(f"{opinions_ingested} opinions ingested.")
     click.echo(f"{embeddings_stored} embeddings stored.")
+
+
+def generate_metadata_for_opinion_text_chunk(case: dict, opinion: dict, text_chunk: str) -> dict:
+    """
+    Generates a dict derived from COLD_CASES_OPINION_DATA populated with relevant info from:
+    - case
+    - opinion
+    - opinion text_chunk
+    """
+    metadata = dict(COLD_CASES_OPINION_DATA)
+
+    metadata["case_id"] = case["id"]
+
+    if case["date_filed"]:
+        metadata["case_date_filed"] = str(case["date_filed"])
+
+    if case["case_name"]:
+        metadata["case_name"] = case["case_name"]
+
+    if case["judges"]:
+        metadata["case_judges"] = case["judges"]
+
+    if case["attorneys"]:
+        metadata["case_attorneys"] = case["attorneys"]
+
+    # Convert short-code for court type to full name
+    if case["court_type"] and COLD_CASES_COURT_TYPE_CODES.get(case["court_type"]):
+        metadata["court_type"] = COLD_CASES_COURT_TYPE_CODES[case["court_type"]]
+
+    if case["court_jurisdiction"]:
+        metadata["court_jurisdiction"] = case["court_jurisdiction"]
+
+    if case["court_full_name"]:
+        metadata["court_name"] = case["court_full_name"]
+
+    metadata["opinion_id"] = opinion["opinion_id"]
+
+    if opinion["author_str"]:
+        metadata["opinion_author"] = opinion["author_str"]
+
+    metadata["opinion_text"] = text_chunk[len(VECTOR_SEARCH_CHUNK_PREFIX) :]  # noqa
+
+    return metadata
