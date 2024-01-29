@@ -70,7 +70,6 @@ def create_app():
         os.makedirs(os.environ["VECTOR_SEARCH_PATH"], exist_ok=True)
 
         from open_legal_rag import commands
-
-        # from open_legal_rag import views
+        from open_legal_rag import views
 
         return app
