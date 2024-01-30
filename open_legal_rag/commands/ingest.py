@@ -69,7 +69,7 @@ SUMMARIZATION_EXCERPT_TEMPLATE = os.environ["SUMMARIZATION_EXCERPT_TEMPLATE"]
     "--limit",
     default=0,
     type=int,
-    help="If set and > 0, only processes up to X entries from COLD Cases dataset.",
+    help="If set and > 0, only ingests up to X court opinions from COLD Cases dataset.",
 )
 def ingest(
     summarize=False,
@@ -145,7 +145,7 @@ def ingest(
         click.echo(f"🔍 Case #{case['id']}")
 
         # Limit filter
-        if limit > 0 and i >= limit:
+        if limit > 0 and opinions_ingested >= limit:
             click.echo(f"--limit ({limit}) reached. Interrupting.")
             break
 
