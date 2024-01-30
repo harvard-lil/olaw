@@ -176,6 +176,10 @@ def ingest(
             click.echo(f"{case['date_filed']} after year_max {year_max} - Skipping.")
             continue
 
+        # Account for cases that don't have opinions
+        if not case["opinions"]:
+            case["opinions"] = []
+
         # For each opinion:
         # - Split text using model-appropriate text-splitter
         # - Generate embeddings for resulting chunks
