@@ -204,7 +204,6 @@ def ingest(
                 try:
                     click.echo(f"{case_plus_opinion_id} -> Summarizing using {SUMMARIZATION_MODEL}")
                     opinion_text = summarize_opinion_text(case, opinion_text)
-                    print(opinion_text)
                 except Exception:
                     click.echo(traceback.format_exc())
                     click.echo(f"{case_plus_opinion_id} could not be summarized - Skipping")
