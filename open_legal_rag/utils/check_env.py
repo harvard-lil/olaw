@@ -27,6 +27,7 @@ def check_env() -> bool:
         "SUMMARIZATION_MODEL_TEMPERATURE",
         "SUMMARIZATION_EXCERPT_TEMPLATE",
         "SUMMARIZATION_PROMPT",
+        "RAG_CONTEXT_LINE",
         "RAG_PROMPT",
     ]:
         if prop not in environ:

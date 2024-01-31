@@ -101,9 +101,9 @@ def ingest(
     # Filter input params
     if year_min and year_max:
         try:
-            assert year_min < year_max
+            assert year_min <= year_max
         except Exception:
-            click.echo("year_min must be inferior to year_max")
+            click.echo("year_min must be inferior or equal to year_max")
             exit(1)
 
     # Cleanup
@@ -176,6 +176,11 @@ def ingest(
             click.echo(f"{case['date_filed']} after year_max {year_max} - Skipping.")
             continue
 
+        # Data cleanup
+        # - Encoding errors
+        if case["case_name"] and case["case_name"][-1] == "Â":
+            case["case_name"] = case["case_name"][0:-1]
+
         # Account for cases that don't have opinions
         if not case["opinions"]:
             case["opinions"] = []
@@ -199,6 +204,7 @@ def ingest(
                 try:
                     click.echo(f"{case_plus_opinion_id} -> Summarizing using {SUMMARIZATION_MODEL}")
                     opinion_text = summarize_opinion_text(case, opinion_text)
+                    print(opinion_text)
                 except Exception:
                     click.echo(traceback.format_exc())
                     click.echo(f"{case_plus_opinion_id} could not be summarized - Skipping")
@@ -279,8 +285,17 @@ def summarize_opinion_text(case: dict, opinion_text: str) -> str:
     else:
         intro = intro.replace("{case_name}", case["slug"])
 
+    if case["date_filed"]:
+        intro = intro.replace("{year}", str(case["date_filed"].year))
+    else:
+        intro = intro.replace("{year}", "")
+
     if case["court_full_name"]:
-        intro = intro.replace("{court_full_name}", case["court_full_name"])
+        intro = intro.replace("{court_name}", case["court_full_name"])
+    elif case["court_name"]:
+        intro = intro.replace("{court_name}", case["court_name"])
+    else:
+        intro = intro.replace("{court_name}", "")
 
     return f"{intro} {summary}"
 

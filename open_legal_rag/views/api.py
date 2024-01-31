@@ -230,9 +230,21 @@ def post_completion():
     #
 
     # Prepare text version of context that was retrieved
+    # Prepends RAG_CONTEXT_LINE to every piece of context that was retrieved from the vector store.
     if vector_search_results:
         for vector in vector_search_results["metadatas"][0]:
-            context += f"The following text is from or about a court opinion - {vector['case_name']}, {vector['court_name']} ({vector['case_date_filed']}):\n"
+            context_line = environ["RAG_CONTEXT_LINE"]
+
+            if vector["case_date_filed"]:
+                context_line = context_line.replace("{year}", vector["case_date_filed"][0:4])
+            else:
+                context_line = context_line.replace("{year}", "")
+
+            context_line = context_line.replace("{year}", "")
+            context_line = context_line.replace("{case_name}", vector["case_name"])
+            context_line = context_line.replace("{court_name}", vector["court_name"])
+
+            context += f"{context_line}\n"
             context += f"{vector['opinion_text']}\n\n"
 
     if no_rag:
