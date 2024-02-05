@@ -9,10 +9,11 @@ version = "0.1.0"
 [tool.poetry.dependencies]
 click = "^8.1.7"
 flask = "^3.0.0"
-litellm = "^1.10.4"
 python = "^3.11"
 python-dotenv = "^1.0.0"
 requests = "^2.31.0"
+openai = "^1.11.1"
+ollama = "^0.1.6"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.10.1"

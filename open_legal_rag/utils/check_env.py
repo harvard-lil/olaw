@@ -1,6 +1,7 @@
 """
 `utils.check_env` module: Checks that required env variables are available.
 """
+
 import os
 
 
@@ -11,7 +12,11 @@ def check_env() -> bool:
     """
     environ = os.environ
 
-    for prop in []:
+    for prop in [
+        "COURT_LISTENER_API_TOKEN",
+        "COURT_LISTENER_MAX_RESULTS",
+        "EXTRACT_LEGAL_QUERY_PROMPT",
+    ]:
         if prop not in environ:
             raise Exception(f"env var {prop} must be defined.")
 
