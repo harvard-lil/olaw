@@ -32,7 +32,7 @@ def get_models():
     return jsonify(list_available_models()), 200
 
 
-@current_app.route("/api/legal/extract-question", methods=["POST"])
+@current_app.route("/api/legal/extract-query", methods=["POST"])
 def post_legal_extract_question():
     """
     Analyses a message and, if it contains a legal question, tries to generate a search statement from it.
