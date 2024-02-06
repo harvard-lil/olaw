@@ -1,6 +1,7 @@
 """
 `open_legal_rag` module: REST API and CLI commands for the `open-legal-rag` pipeline.
 """
+
 import os
 
 from dotenv import load_dotenv
@@ -8,8 +9,8 @@ from flask import Flask
 
 from open_legal_rag import utils
 
-
 load_dotenv()
+
 
 def create_app():
     """

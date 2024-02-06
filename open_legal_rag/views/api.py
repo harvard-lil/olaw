@@ -7,11 +7,24 @@ import traceback
 import uuid
 import json
 
+import requests
+import html2text
 from flask import current_app, jsonify, request, g
 from openai import OpenAI
 import ollama
 
 from open_legal_rag.utils import list_available_models
+
+OPINION_DATA_TEMPLATE = {
+    "id": "",
+    "case_name": "",
+    "court": "",
+    "absolute_url": "",
+    "status": "",
+    "date_filed": "",
+    "text": "",
+}
+""" Data format for info returned by /api/legal/search. """
 
 
 @current_app.route("/api/models")
@@ -130,7 +143,84 @@ def post_legal_extract_question():
 
 @current_app.route("/api/legal/search", methods=["POST"])
 def post_legal_search():
-    return jsonify({}), 200
+    """
+    Runs a search statement against the Court Listener API and returns up to X court opinions.
+
+    Accepts JSON body with the following properties:
+    - "search_statement": str
+
+    Returns JSON: List of OPINION_DATA_TEMPLATE objects
+    """
+    input = request.get_json()
+    search_statement = ""
+
+    api_url = os.environ["COURT_LISTENER_API_URL"]
+    base_url = os.environ["COURT_LISTENER_BASE_URL"]
+    max_results = int(os.environ["COURT_LISTENER_MAX_RESULTS"])
+
+    search_results = None
+    output = []
+
+    #
+    # Check that "search_statement" was provided
+    #
+    if "search_statement" not in input:
+        return jsonify({"error": "No search statement provided."}), 400
+
+    search_statement = str(input["search_statement"]).strip()
+
+    if not search_statement:
+        return jsonify({"error": "Search statement cannot be empty."}), 400
+
+    #
+    # Search for opinions
+    #
+    try:
+        search_results = requests.get(
+            f"{api_url}search/",
+            timeout=10,
+            params={"type": "o", "q": search_statement},
+        ).json()
+    except Exception:
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({"error": "Could not search for court opinions on Court Listener."}), 500
+
+    #
+    # Pull opinion text for the first X results
+    #
+    for i in range(0, max_results):
+        if i > len(search_results["results"]) - 1:
+            break
+
+        opinion = dict(OPINION_DATA_TEMPLATE)
+
+        opinion_metadata = search_results["results"][i]
+        opinion["id"] = opinion_metadata["id"]
+        opinion["case_name"] = opinion_metadata["caseName"]
+        opinion["court"] = opinion_metadata["court"]
+        opinion["absolute_url"] = base_url + opinion_metadata["absolute_url"]
+        opinion["status"] = opinion_metadata["status"]
+        opinion["date_filed"] = opinion_metadata["dateFiled"]
+
+        # Pull opinion text
+        try:
+            opinion_data = requests.get(
+                f"{api_url}opinions/",
+                timeout=10,
+                params={"id": opinion["id"]},
+            ).json()
+
+            opinion_data = opinion_data["results"][0]
+            opinion["text"] = html2text.html2text(opinion_data["html"])
+
+        except Exception:
+            current_app.logger.error(f"Not data for opinion #{opinion['id']} on Court Listener.")
+            current_app.logger.error(traceback.format_exc())
+            continue
+
+        output.append(opinion)
+
+    return jsonify(output), 200
 
 
 @current_app.route("/api/complete", methods=["POST"])
