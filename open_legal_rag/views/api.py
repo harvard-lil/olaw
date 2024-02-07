@@ -29,12 +29,19 @@ OPINION_DATA_TEMPLATE = {
 
 @current_app.route("/api/models")
 def get_models():
+    """
+    [GET] /api/models
+
+    Returns a list of available / suitable text completion models.
+    """
     return jsonify(list_available_models()), 200
 
 
-@current_app.route("/api/legal/extract-query", methods=["POST"])
+@current_app.route("/api/legal/extract-search-statement", methods=["POST"])
 def post_legal_extract_question():
     """
+    [POST] /api/legal/extract-search-statement
+
     Analyses a message and, if it contains a legal question, tries to generate a search statement from it.
 
     Accepts JSON body with the following properties:
@@ -144,6 +151,8 @@ def post_legal_extract_question():
 @current_app.route("/api/legal/search", methods=["POST"])
 def post_legal_search():
     """
+    [POST] /api/legal/search
+
     Runs a search statement against the Court Listener API and returns up to X court opinions.
 
     Accepts JSON body with the following properties:
@@ -225,4 +234,165 @@ def post_legal_search():
 
 @current_app.route("/api/complete", methods=["POST"])
 def post_complete():
-    return jsonify({}), 200
+    """
+    [POST] /api/complete
+
+    Accepts JSON body with the following properties:
+    - "message": User prompt (required)
+    - "model": One of the models /api/models lists (required)
+    - "temperature": Defaults to 0.0
+    - "search_results": Output from /api/legal/search - List of OPINION_DATA_TEMPLATE objects.
+    - "max_tokens": If provided, caps number of tokens that will be generated in response.
+    - "history": A list of chat completion objects representing the chat history. Each object must contain "user" and "content".
+
+    Example of a "history" list:
+    ```
+    [
+        {"role": "user", "content": "Foo bar"},
+        {"role": "assistant", "content": "Bar baz"}
+    ]
+    ```
+    """
+    available_models = list_available_models()
+
+    input = request.get_json()
+    model = None
+    message = None
+    search_results = ""
+    temperature = 0.0
+    max_tokens = None
+
+    prompt = os.environ["TEXT_COMPLETION_BASE_PROMPT"]  # Contains {history} and {rag}
+    rag_prompt = os.environ["TEXT_COMPLETION_RAG_PROMPT"]  # Template for {rag}
+    history_prompt = os.environ["TEXT_COMPLETION_HISTORY_PROMPT"]  # Template for {history}
+
+    history = []  # Chat completion objects keeping track of exchanges
+
+    #
+    # Check that "model" was provided and is available
+    #
+    if "model" not in input:
+        return jsonify({"error": "No model provided."}), 400
+
+    if input["model"] not in available_models:
+        return jsonify({"error": "Requested model is invalid or not available."}), 400
+
+    model = input["model"]
+
+    #
+    # Check that "message" was provided
+    #
+    if "message" not in input:
+        return jsonify({"error": "No message provided."}), 400
+
+    message = str(input["message"]).strip()
+
+    if not message:
+        return jsonify({"error": "Message cannot be empty."}), 400
+
+    #
+    # Validate "search_results" if provided
+    #
+    if "search_results" in input:
+        try:
+            for result in input["search_results"]:
+                assert set(result.keys()) == set(OPINION_DATA_TEMPLATE.keys())
+
+            search_results = input["search_results"]
+        except Exception:
+            return (
+                jsonify({"error": "search_results must be the output of /api/legal/search."}),
+                400,
+            )
+
+    #
+    # Validate "temperature" if provided
+    #
+    if "temperature" in input:
+        try:
+            temperature = float(input["temperature"])
+            assert temperature >= 0.0
+        except Exception:
+            return (
+                jsonify({"error": "temperature must be a float superior or equal to 0.0."}),
+                400,
+            )
+
+    #
+    # Validate "max_tokens" if provided
+    #
+    if "max_tokens" in input:
+        try:
+            max_tokens = int(input["max_tokens"])
+            assert max_tokens > 0
+        except Exception:
+            return (jsonify({"error": "max_tokens must be an int superior to 0."}), 400)
+
+    #
+    # Validate "history" if provided
+    #
+    if "history" in input:
+        try:
+            for past_message in input["history"]:
+                assert past_message["role"]
+                assert past_message["content"]
+                history.append(past_message)
+
+        except Exception:
+            return (
+                jsonify({"error": "past_messages must be an array of chat completion objects."}),
+                400,
+            )
+
+    #
+    # Assemble prompt
+    #
+    history_to_txt = ""
+    search_results_to_txt = ""
+
+    # History
+    for past_message in history:
+        history_to_txt += f"{past_message['role']}: {past_message['content']}\n"
+
+    if history_to_txt:
+        history_prompt = history_prompt.replace("{history}", history_to_txt)
+        prompt = prompt.replace("{history}", history_prompt)
+    else:
+        prompt = prompt.replace("{history}", "")
+
+    # Context
+    for result in search_results:
+        search_results_to_txt += (
+            f"{result['case_name']} ({result['date_filed'][0:4]}) {result['court']}:\n"
+        )
+        search_results_to_txt += result["text"]
+        search_results_to_txt += "\n\n"
+
+    if search_results_to_txt:
+        rag_prompt = rag_prompt.replace("{rag}", search_results_to_txt)
+        prompt = prompt.replace("{rag}", rag_prompt)
+    else:
+        prompt = prompt.replace("{rag}", "")
+
+    # Message
+    prompt = prompt.replace("{request}", message)
+
+    prompt = prompt.strip()
+
+    #
+    # Run completion
+    #
+    # TODO
+
+    return jsonify(prompt), 200
+
+
+OPINION_DATA_TEMPLATE = {
+    "id": "",
+    "case_name": "",
+    "court": "",
+    "absolute_url": "",
+    "status": "",
+    "date_filed": "",
+    "text": "",
+}

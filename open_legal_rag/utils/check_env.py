@@ -18,6 +18,9 @@ def check_env() -> bool:
         "EXTRACT_LEGAL_QUERY_PROMPT",
         "COURT_LISTENER_API_URL",
         "COURT_LISTENER_BASE_URL",
+        "TEXT_COMPLETION_BASE_PROMPT",
+        "TEXT_COMPLETION_RAG_PROMPT",
+        "TEXT_COMPLETION_HISTORY_PROMPT",
     ]:
         if prop not in environ:
             raise Exception(f"env var {prop} must be defined.")
