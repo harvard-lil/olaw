@@ -4,7 +4,6 @@
 
 import os
 import traceback
-import uuid
 import json
 
 import requests
