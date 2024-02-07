@@ -9,7 +9,7 @@ import json
 
 import requests
 import html2text
-from flask import current_app, jsonify, request, g
+from flask import current_app, jsonify, request, Response
 from openai import OpenAI
 import ollama
 
@@ -347,29 +347,39 @@ def post_complete():
     #
     # Assemble prompt
     #
-    history_to_txt = ""
-    search_results_to_txt = ""
+    history_txt = ""
+    search_results_txt = ""
 
     # History
     for past_message in history:
-        history_to_txt += f"{past_message['role']}: {past_message['content']}\n"
+        history_txt += f"{past_message['role']}: {past_message['content']}\n"
 
-    if history_to_txt:
-        history_prompt = history_prompt.replace("{history}", history_to_txt)
+    if history_txt:
+        history_prompt = history_prompt.replace("{history}", history_txt)
         prompt = prompt.replace("{history}", history_prompt)
     else:
         prompt = prompt.replace("{history}", "")
 
     # Context
     for result in search_results:
-        search_results_to_txt += (
-            f"{result['case_name']} ({result['date_filed'][0:4]}) {result['court']}:\n"
+        case_name, date_filed, court, absolute_url = (
+            result["case_name"],
+            result["date_filed"],
+            result["court"],
+            result["absolute_url"],
         )
-        search_results_to_txt += result["text"]
-        search_results_to_txt += "\n\n"
 
-    if search_results_to_txt:
-        rag_prompt = rag_prompt.replace("{rag}", search_results_to_txt)
+        absolute_url = os.environ["COURT_LISTENER_BASE_URL"] + absolute_url
+
+        search_results_txt += (
+            f"{case_name} ({date_filed[0:4]}) {court} as sourced from {absolute_url}:\n"
+        )
+
+        search_results_txt += result["text"]
+        search_results_txt += "\n\n"
+
+    if search_results_txt:
+        rag_prompt = rag_prompt.replace("{rag}", search_results_txt)
         prompt = prompt.replace("{rag}", rag_prompt)
     else:
         prompt = prompt.replace("{rag}", "")
@@ -382,17 +392,42 @@ def post_complete():
     #
     # Run completion
     #
-    # TODO
+    try:
+        # Open AI
+        if model.startswith("openai"):
+            openai_client = OpenAI()
 
-    return jsonify(prompt), 200
+            stream = openai_client.chat.completions.create(
+                model=model.replace("openai/", ""),
+                temperature=temperature,
+                max_tokens=max_tokens if max_tokens else None,
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+            )
 
+            def generate_openai():
+                for chunk in stream:
+                    yield chunk.choices[0].delta.content or ""
 
-OPINION_DATA_TEMPLATE = {
-    "id": "",
-    "case_name": "",
-    "court": "",
-    "absolute_url": "",
-    "status": "",
-    "date_filed": "",
-    "text": "",
-}
+            return Response(generate_openai(), mimetype="text/plain")
+
+        # Ollama
+        if model.startswith("ollama"):
+
+            ollama_client = ollama.Client(host=os.environ["OLLAMA_API_URL"])
+
+            stream = ollama_client.chat(
+                model=model.replace("ollama/", ""),
+                options={"temperature": temperature},
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+            )
+
+            def generate_ollama():
+                for chunk in stream:
+                    yield chunk["message"]["content"] or ""
+
+            return Response(generate_ollama(), mimetype="text/plain")
+    except Exception:
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({"error": f"Could not run completion against {model}."}), 500
