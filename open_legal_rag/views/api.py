@@ -1,72 +1,64 @@
 """
 `views.api` module: API routes controller.
 """
+
 import os
 import traceback
-import uuid
+import json
 
-import chromadb
-import litellm
-from sentence_transformers import SentenceTransformer
-from flask import current_app, jsonify, request, g
+import requests
+import html2text
+from flask import current_app, jsonify, request, Response
+from openai import OpenAI
+import ollama
 
 from open_legal_rag.utils import list_available_models
 
-litellm.telemetry = False
+OPINION_DATA_TEMPLATE = {
+    "id": "",
+    "case_name": "",
+    "court": "",
+    "absolute_url": "",
+    "status": "",
+    "date_filed": "",
+    "text": "",
+}
+""" Data format for info returned by /api/legal/search. """
 
 
 @current_app.route("/api/models")
 def get_models():
+    """
+    [GET] /api/models
+
+    Returns a list of available / suitable text completion models.
+    """
     return jsonify(list_available_models()), 200
 
 
-@current_app.route("/api/completion", methods=["POST"])
-def post_completion():
+@current_app.route("/api/legal/extract-search-statement", methods=["POST"])
+def post_legal_extract_question():
     """
-    [POST] /api/completion
+    [POST] /api/legal/extract-search-statement
+
+    Analyses a message and, if it contains a legal question, tries to generate a search statement from it.
 
     Accepts JSON body with the following properties:
     - "model": One of the models /api/models lists (required)
     - "message": User prompt (required)
     - "temperature": Defaults to 0.0
-    - "max_tokens": If provided, caps number of tokens that will be generated in response.
-    - "no_rag": If set and true, the API will not try to retrieve context.
-    - "history": A list of chat completion objects representing the chat history. Each object must contain "user" and "content".
-    - "rag_prompt_override": If provided, will be used in replacement of the predefined RAG prompt. {context} and {question} placeholders will be automatically replaced.
 
-    Examples of history list:
-    ```
-    [
-        {"role": "user", "content": "Foo bar"},
-        {"role": "assistant", "content": "Bar baz"}
-    ]
-    ```
+    Returns JSON:
+    - {"search_statement": str}
     """
-    environ = os.environ
-
-    chroma_client = None
-    chroma_collection = None
-    embedding_model = None
-
     available_models = list_available_models()
-
     input = request.get_json()
-    model = None
-    message = None
+    model = ""
+    message = ""
     temperature = 0.0
-    max_tokens = None
-    no_rag = False
-    rag_prompt_override = None
-
-    vector_search_results = None
-    prompt = ""
-    context = ""
-
-    history = []  # List of chat completion objects keeping track of exchanges (no RAG context)
-    messages = []  # List of chat completion objects sent to LLM - last "user" entry has RAG context
-
-    normalize_embeddings = environ["VECTOR_SEARCH_NORMALIZE_EMBEDDINGS"] == "true"
-    query_prefix = environ["VECTOR_SEARCH_QUERY_PREFIX"]
+    prompt = os.environ["EXTRACT_LEGAL_QUERY_PROMPT"]
+    output = ""
+    timeout = 30
 
     #
     # Check that "model" was provided and is available
@@ -104,6 +96,228 @@ def post_completion():
             )
 
     #
+    # Ask model to filter out and extract search query
+    #
+    prompt = f"{prompt}\n{message}"
+
+    try:
+        # Open AI
+        if model.startswith("openai"):
+            openai_client = OpenAI()
+
+            response = openai_client.chat.completions.create(
+                model=model.replace("openai/", ""),
+                temperature=temperature,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                timeout=timeout,
+            )
+
+            output = json.loads(response.model_dump_json())["choices"][0]["message"]["content"]
+
+        # Ollama
+        if model.startswith("ollama"):
+            ollama_client = ollama.Client(
+                host=os.environ["OLLAMA_API_URL"],
+                timeout=timeout,
+            )
+
+            response = ollama_client.chat(
+                model=model.replace("ollama/", ""),
+                format="json",
+                options={"temperature": temperature},
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            output = response["message"]["content"]
+    except Exception:
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({"error": f"Could not run completion against {model}."}), 500
+
+    # Check output format
+    try:
+        output = json.loads(output)
+        assert "search_statement" in output  # Will raise an exception if format is invalid
+        assert isinstance(output["search_statement"], str) or output["search_statement"] is None
+        assert len(output.keys()) == 1
+    except Exception:
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({"error": f"{model} returned invalid JSON."}), 500
+
+    return jsonify(output), 200
+
+
+@current_app.route("/api/legal/search", methods=["POST"])
+def post_legal_search():
+    """
+    [POST] /api/legal/search
+
+    Runs a search statement against the Court Listener API and returns up to X court opinions.
+
+    Accepts JSON body with the following properties:
+    - "search_statement": str
+
+    Returns JSON: List of OPINION_DATA_TEMPLATE objects
+    """
+    input = request.get_json()
+    search_statement = ""
+
+    api_url = os.environ["COURT_LISTENER_API_URL"]
+    base_url = os.environ["COURT_LISTENER_BASE_URL"]
+    max_results = int(os.environ["COURT_LISTENER_MAX_RESULTS"])
+
+    search_results = None
+    output = []
+
+    #
+    # Check that "search_statement" was provided
+    #
+    if "search_statement" not in input:
+        return jsonify({"error": "No search statement provided."}), 400
+
+    search_statement = str(input["search_statement"]).strip()
+
+    if not search_statement:
+        return jsonify({"error": "Search statement cannot be empty."}), 400
+
+    #
+    # Search for opinions
+    #
+    try:
+        search_results = requests.get(
+            f"{api_url}search/",
+            timeout=10,
+            params={"type": "o", "q": search_statement},
+        ).json()
+    except Exception:
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({"error": "Could not search for court opinions on Court Listener."}), 500
+
+    #
+    # Pull opinion text for the first X results
+    #
+    for i in range(0, max_results):
+        if i > len(search_results["results"]) - 1:
+            break
+
+        opinion = dict(OPINION_DATA_TEMPLATE)
+
+        opinion_metadata = search_results["results"][i]
+        opinion["id"] = opinion_metadata["id"]
+        opinion["case_name"] = opinion_metadata["caseName"]
+        opinion["court"] = opinion_metadata["court"]
+        opinion["absolute_url"] = base_url + opinion_metadata["absolute_url"]
+        opinion["status"] = opinion_metadata["status"]
+        opinion["date_filed"] = opinion_metadata["dateFiled"]
+
+        # Pull opinion text
+        try:
+            opinion_data = requests.get(
+                f"{api_url}opinions/",
+                timeout=10,
+                params={"id": opinion["id"]},
+            ).json()
+
+            opinion_data = opinion_data["results"][0]
+            opinion["text"] = html2text.html2text(opinion_data["html"])
+
+        except Exception:
+            current_app.logger.error(f"Not data for opinion #{opinion['id']} on Court Listener.")
+            current_app.logger.error(traceback.format_exc())
+            continue
+
+        output.append(opinion)
+
+    return jsonify(output), 200
+
+
+@current_app.route("/api/complete", methods=["POST"])
+def post_complete():
+    """
+    [POST] /api/complete
+
+    Accepts JSON body with the following properties:
+    - "message": User prompt (required)
+    - "model": One of the models /api/models lists (required)
+    - "temperature": Defaults to 0.0
+    - "search_results": Output from /api/legal/search - List of OPINION_DATA_TEMPLATE objects.
+    - "max_tokens": If provided, caps number of tokens that will be generated in response.
+    - "history": A list of chat completion objects representing the chat history. Each object must contain "user" and "content".
+
+    Example of a "history" list:
+    ```
+    [
+        {"role": "user", "content": "Foo bar"},
+        {"role": "assistant", "content": "Bar baz"}
+    ]
+    ```
+    """
+    available_models = list_available_models()
+
+    input = request.get_json()
+    model = None
+    message = None
+    search_results = ""
+    temperature = 0.0
+    max_tokens = None
+
+    prompt = os.environ["TEXT_COMPLETION_BASE_PROMPT"]  # Contains {history} and {rag}
+    rag_prompt = os.environ["TEXT_COMPLETION_RAG_PROMPT"]  # Template for {rag}
+    history_prompt = os.environ["TEXT_COMPLETION_HISTORY_PROMPT"]  # Template for {history}
+
+    history = []  # Chat completion objects keeping track of exchanges
+
+    #
+    # Check that "model" was provided and is available
+    #
+    if "model" not in input:
+        return jsonify({"error": "No model provided."}), 400
+
+    if input["model"] not in available_models:
+        return jsonify({"error": "Requested model is invalid or not available."}), 400
+
+    model = input["model"]
+
+    #
+    # Check that "message" was provided
+    #
+    if "message" not in input:
+        return jsonify({"error": "No message provided."}), 400
+
+    message = str(input["message"]).strip()
+
+    if not message:
+        return jsonify({"error": "Message cannot be empty."}), 400
+
+    #
+    # Validate "search_results" if provided
+    #
+    if "search_results" in input:
+        try:
+            for result in input["search_results"]:
+                assert set(result.keys()) == set(OPINION_DATA_TEMPLATE.keys())
+
+            search_results = input["search_results"]
+        except Exception:
+            return (
+                jsonify({"error": "search_results must be the output of /api/legal/search."}),
+                400,
+            )
+
+    #
+    # Validate "temperature" if provided
+    #
+    if "temperature" in input:
+        try:
+            temperature = float(input["temperature"])
+            assert temperature >= 0.0
+        except Exception:
+            return (
+                jsonify({"error": "temperature must be a float superior or equal to 0.0."}),
+                400,
+            )
+
+    #
     # Validate "max_tokens" if provided
     #
     if "max_tokens" in input:
@@ -112,28 +326,6 @@ def post_completion():
             assert max_tokens > 0
         except Exception:
             return (jsonify({"error": "max_tokens must be an int superior to 0."}), 400)
-
-    #
-    # Validate "no_rag" if provided
-    #
-    if "no_rag" in input:
-        try:
-            assert isinstance(input["no_rag"], bool)
-            no_rag = input["no_rag"]
-        except Exception:
-            current_app.logger.warn("no_rag parameter was passed but ignored as invalid.")
-
-    #
-    # Validate "rag_prompt_override" if provided
-    #
-    if "rag_prompt_override" in input:
-        try:
-            assert isinstance(input["rag_prompt_override"], str)
-            rag_prompt_override = str(input["rag_prompt_override"]).strip()
-        except Exception:
-            current_app.logger.warn(
-                "rag_prompt_override parameter was passed but ignored as invalid."
-            )
 
     #
     # Validate "history" if provided
@@ -152,162 +344,89 @@ def post_completion():
             )
 
     #
-    # Retrieve context - unless in no_rag mode
+    # Assemble prompt
     #
+    history_txt = ""
+    search_results_txt = ""
 
-    # Load vector store client and collection
-    # Shared at app-level through:
-    # - g.chroma_client
-    # - g.chroma_collection
-    try:
-        assert not no_rag
+    # History
+    for past_message in history:
+        history_txt += f"{past_message['role']}: {past_message['content']}\n"
 
-        if "chroma_client" in g:
-            chroma_client = g.chroma_client
-        else:
-            chroma_client = chromadb.PersistentClient(
-                path=environ["VECTOR_SEARCH_PATH"],
-                settings=chromadb.Settings(anonymized_telemetry=False),
-            )
-
-            g.chroma_client = chroma_client
-
-        if "chroma_collection" in g:
-            chroma_collection = g.chroma_collection
-        else:
-            chroma_collection = chroma_client.get_collection(
-                name=environ["VECTOR_SEARCH_COLLECTION_NAME"]
-            )
-
-            g.chroma_collection = chroma_collection
-
-    except AssertionError:
-        pass  # no_rag mode
-    except Exception:
-        current_app.logger.error(traceback.format_exc())
-        return jsonify({"error": "Could not load vector store."}), 500
-
-    # Load embedding model (Shared at app-level via g.embedding_model)
-    try:
-        assert not no_rag
-
-        if "embedding_model" in g:
-            embedding_model = g.embedding_model
-        else:
-            embedding_model = SentenceTransformer(
-                environ["VECTOR_SEARCH_SENTENCE_TRANSFORMER_MODEL"],
-                device=environ["VECTOR_SEARCH_SENTENCE_TRANSFORMER_DEVICE"],
-            )
-
-            g.embedding_model = embedding_model
-    except AssertionError:
-        pass  # no_rag mode
-    except Exception:
-        current_app.logger.error(traceback.format_exc())
-        return jsonify({"error": "Could not load embedding model."}), 500
-
-    # Retrieve context chunks
-    try:
-        assert not no_rag
-
-        message_embedding = embedding_model.encode(
-            sentences=f"{query_prefix}{message}",
-            normalize_embeddings=normalize_embeddings,
-        ).tolist()
-
-        vector_search_results = chroma_collection.query(
-            query_embeddings=message_embedding,
-            n_results=int(environ["VECTOR_SEARCH_SEARCH_N_RESULTS"]),
-        )
-    except AssertionError:
-        pass  # no_rag mode
-    except Exception:
-        current_app.logger.error(traceback.format_exc())
-        return jsonify({"error": "Could not retrieve context from vector store."}), 500
-
-    #
-    # Prepare prompt
-    #
-
-    # Prepare text version of context that was retrieved
-    # Prepends RAG_CONTEXT_LINE to every piece of context that was retrieved from the vector store.
-    if vector_search_results:
-        for vector in vector_search_results["metadatas"][0]:
-            context_line = environ["RAG_CONTEXT_LINE"]
-
-            if vector["case_date_filed"]:
-                context_line = context_line.replace("{year}", vector["case_date_filed"][0:4])
-            else:
-                context_line = context_line.replace("{year}", "")
-
-            context_line = context_line.replace("{year}", "")
-            context_line = context_line.replace("{case_name}", vector["case_name"])
-            context_line = context_line.replace("{court_name}", vector["court_name"])
-
-            context += f"{context_line}\n"
-            context += f"{vector['opinion_text']}\n\n"
-
-    if no_rag:
-        prompt = message
+    if history_txt:
+        history_prompt = history_prompt.replace("{history}", history_txt)
+        prompt = prompt.replace("{history}", history_prompt)
     else:
-        prompt = rag_prompt_override if rag_prompt_override else environ["RAG_PROMPT"]
-        prompt = prompt.replace("{context}", context)
-        prompt = prompt.replace("{question}", message)
-        prompt = prompt.strip()
+        prompt = prompt.replace("{history}", "")
+
+    # Context
+    for result in search_results:
+        case_name, date_filed, court, absolute_url = (
+            result["case_name"],
+            result["date_filed"],
+            result["court"],
+            result["absolute_url"],
+        )
+
+        absolute_url = os.environ["COURT_LISTENER_BASE_URL"] + absolute_url
+
+        search_results_txt += (
+            f"{case_name} ({date_filed[0:4]}) {court} as sourced from {absolute_url}:\n"
+        )
+
+        search_results_txt += result["text"]
+        search_results_txt += "\n\n"
+
+    if search_results_txt:
+        rag_prompt = rag_prompt.replace("{rag}", search_results_txt)
+        prompt = prompt.replace("{rag}", rag_prompt)
+    else:
+        prompt = prompt.replace("{rag}", "")
+
+    # Message
+    prompt = prompt.replace("{request}", message)
+
+    prompt = prompt.strip()
 
     #
-    # Query LLM
+    # Run completion
     #
     try:
-        messages = list(history)
-        messages.append({"content": prompt, "role": "user"})
+        # Open AI
+        if model.startswith("openai"):
+            openai_client = OpenAI()
 
-        # Try adjust messages list to context length (buggy)
-        try:
-            new_messages = litellm.utils.trim_messages(messages, model=model)
-            assert new_messages
-            messages = new_messages
-        except Exception:
-            current_app.logger.warn(f"litellm could not trim messages for {model}")
+            stream = openai_client.chat.completions.create(
+                model=model.replace("openai/", ""),
+                temperature=temperature,
+                max_tokens=max_tokens if max_tokens else None,
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+            )
 
-        response = litellm.completion(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            api_base=os.environ["OLLAMA_API_URL"] if model.startswith("ollama") else None,
-        )
+            def generate_openai():
+                for chunk in stream:
+                    yield chunk.choices[0].delta.content or ""
 
-        history.append({"content": message, "role": "user"})
+            return Response(generate_openai(), mimetype="text/plain")
 
-        history.append(
-            {
-                "content": response["choices"][0]["message"]["content"],
-                "role": "assistant",
-            }
-        )
+        # Ollama
+        if model.startswith("ollama"):
 
-        output = {
-            "id_exchange": str(uuid.uuid4()),
-            "response": response["choices"][0]["message"]["content"],
-            "request_info": {
-                "model": model,
-                "message": message,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-                "no_rag": no_rag,
-                "message_plus_prompt": prompt,
-            },
-            "response_info": {
-                "prompt_tokens": response["usage"]["prompt_tokens"],
-                "completion_tokens": response["usage"]["completion_tokens"],
-                "total_tokens": response["usage"]["total_tokens"],
-            },
-            "context": vector_search_results["metadatas"][0] if vector_search_results else [],
-            "history": history,
-        }
+            ollama_client = ollama.Client(host=os.environ["OLLAMA_API_URL"])
 
-        return (jsonify(output), 200)
+            stream = ollama_client.chat(
+                model=model.replace("ollama/", ""),
+                options={"temperature": temperature},
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+            )
+
+            def generate_ollama():
+                for chunk in stream:
+                    yield chunk["message"]["content"] or ""
+
+            return Response(generate_ollama(), mimetype="text/plain")
     except Exception:
         current_app.logger.error(traceback.format_exc())
-        return jsonify({"error": "Could not query LLM."}), 500
+        return jsonify({"error": f"Could not run completion against {model}."}), 500

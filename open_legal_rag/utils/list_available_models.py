@@ -1,49 +1,42 @@
 """
 `utils.list_available_models` module: Checks what models LiteLLM has access to.
 """
+
 import os
+import traceback
 
-import litellm
-import requests
-
-
-litellm.telemetry = False
+from flask import current_app
+from openai import OpenAI
+import ollama
 
 
 def list_available_models() -> list:
     """
-    Returns a list of the models LiteLLM can talk to based on current environment.
-    More info:
-    - https://docs.litellm.ai/docs/
-    - https://github.com/jmorganca/ollama/blob/main/docs/api.md#list-local-models
+    Returns a list of the models Ollama and/or OpenAI can talk to based on current environment.
     """
     models = []
 
     if os.environ.get("OPENAI_API_KEY"):
-        for model in litellm.open_ai_chat_completion_models:
-            if model.startswith("gpt"):
-                models.append(model)
+        try:
+            openai_client = OpenAI()
 
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        for model in litellm.anthropic_models:
-            models.append(model)
+            for model in openai_client.models.list().data:
+                if model.id.startswith("gpt-4"):
+                    models.append(f"openai/{model.id}")
 
-    if os.environ.get("COHERE_API_KEY"):
-        for model in litellm.cohere_models:
-            models.append(model)
+        except Exception:
+            current_app.logger.error("Could not list Open AI models.")
+            current_app.logger.error(traceback.format_exc())
 
-    if os.environ.get("PERPLEXITYAI_API_KEY"):
-        for model in litellm.perplexity_models:
-            models.append(model)
+    if os.environ.get("OLLAMA_API_URL"):
+        try:
+            ollama_client = ollama.Client(host=os.environ["OLLAMA_API_URL"])
 
-    # List models available at Ollama endpoint if provided
-    try:
-        ollama_api_url = os.environ.get("OLLAMA_API_URL", "http://localhost:11343")
-        response = requests.get(f"{ollama_api_url}/api/tags", timeout=1).json()
+            for model in ollama_client.list()["models"]:
+                models.append(f"ollama/{model['name']}")
 
-        for model in response["models"]:
-            models.append(f"ollama/{model['name']}")
-    except Exception:
-        pass
+        except Exception:
+            current_app.logger.error("Could not list Ollama models.")
+            current_app.logger.error(traceback.format_exc())
 
     return models
