@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <title>Open Legal RAG</title>
+    <meta name="description" content="A Retrieval Augmented Generation Research Workbench for Case Law.">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="/static/index.css">
+    <script type="module" src="/static/index.js"></script>
+  </head>
+
+  <body>
+
+    <main>
+      <div id="chat">
+        <div id="chat-dialog">
+        </div>
+
+        <form id="chat-input">
+          <textarea 
+            id="message" 
+            placeholder="This chatbot can use the CourtListener API to answer questions related to case law." 
+            required></textarea>
+          
+          <div>
+            <button class="hollow" data-dialog="settings">Settings</button>
+            <button class="hollow" data-dialog="inspect">Inspect Session</button>
+            <button class="ask" disabled>Ask</button>
+          </div>
+        </form>
+      </div>
+
+      <footer>
+        <a href="https://lil.law.harvard.edu">
+          <img src="/static/images/lil.svg" alt="Harvard Library Innovation Lab - Logo"/>
+        </a>
+
+        <p>
+          <a href="https://github.com/harvard-lil/open-legal-rag">Open Legal RAG</a> is an open-source 
+          experiment by the <a href="https://lil.law.harvard.edu">Harvard Library Innovation Lab</a>.
+        </p>
+      </footer>
+    </main>
+
+    <dialog class="settings">
+      <button class="close">Close</button>
+      <h2>Settings</h2>
+
+      <form>
+        <label for="model">Model</label>
+        <select id="model" name="model">
+          {% for model in available_models %}
+          <option value="{{ model }}">{{ model }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="temperature">Temperature</label>
+        <select id="temperature" name="temperature">
+          {% for i in range(0, 21) %}
+          <option value="{{ i / 10 }}">{{ i / 10}}</option>
+          {% endfor %}
+        </select>
+
+        <label for="max_tokens">Max tokens</label>
+        <input type="number" name="max_tokens" id="max_tokens" value="" placeholder="Default">
+      </form>
+    </dialog>
+
+    <dialog class="inspect">
+      <button class="close">Close</button>
+      <h2>Inspect Session</h2>
+    </dialog>
+
+  </body>
+</html>
