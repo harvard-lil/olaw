@@ -14,7 +14,13 @@ import ollama
 
 from open_legal_rag.utils import list_available_models
 
-OPINION_DATA_TEMPLATE = {
+SEARCH_TARGETS = ["courtlistener"]
+"""
+    List of valid values for "search_target" as returned by /api/legal/extract-search-statement.
+    A future version of the Open Legal RAG should include more search targets.
+"""
+
+COURT_LISTENER_OPINION_DATA_TEMPLATE = {
     "id": "",
     "case_name": "",
     "court": "",
@@ -23,7 +29,7 @@ OPINION_DATA_TEMPLATE = {
     "date_filed": "",
     "text": "",
 }
-""" Data format for info returned by /api/legal/search. """
+""" Data format for CourtListener info returned by /api/legal/search. """
 
 
 @current_app.route("/api/models")
@@ -41,7 +47,9 @@ def post_legal_extract_question():
     """
     [POST] /api/legal/extract-search-statement
 
-    Analyses a message and, if it contains a legal question, tries to generate a search statement from it.
+    Analyses a message and, if it contains a legal question:
+    - Indicate what API is best suited for that query
+    - Returns a search statement for said API.
 
     Accepts JSON body with the following properties:
     - "model": One of the models /api/models lists (required)
@@ -49,7 +57,7 @@ def post_legal_extract_question():
     - "temperature": Defaults to 0.0
 
     Returns JSON:
-    - {"search_statement": str}
+    - {"search_target": str, "search_statement": str}
     """
     available_models = list_available_models()
     input = request.get_json()
@@ -139,7 +147,8 @@ def post_legal_extract_question():
         output = json.loads(output)
         assert "search_statement" in output  # Will raise an exception if format is invalid
         assert isinstance(output["search_statement"], str) or output["search_statement"] is None
-        assert len(output.keys()) == 1
+        assert isinstance(output["search_target"], str) or output["search_target"] is None
+        assert len(output.keys()) == 2
     except Exception:
         current_app.logger.error(traceback.format_exc())
         return jsonify({"error": f"{model} returned invalid JSON."}), 500
@@ -152,22 +161,32 @@ def post_legal_search():
     """
     [POST] /api/legal/search
 
-    Runs a search statement against the Court Listener API and returns up to X court opinions.
+    Runs a search statement against a legal database API and returns up to X results.
+    Target legal API is determined by "search_target".
+    See SEARCH_TARGETS for a list of available targets.
 
     Accepts JSON body with the following properties:
     - "search_statement": str
+    - "search_target": str
 
-    Returns JSON: List of OPINION_DATA_TEMPLATE objects
+    Returns JSON object in the following format:
+    {
+      "courtlistener": [] // List of COURT_LISTENER_OPINION_DATA_TEMPLATE objects
+    }
     """
     input = request.get_json()
     search_statement = ""
+    search_target = ""
 
     api_url = os.environ["COURT_LISTENER_API_URL"]
     base_url = os.environ["COURT_LISTENER_BASE_URL"]
     max_results = int(os.environ["COURT_LISTENER_MAX_RESULTS"])
 
     search_results = None
-    output = []
+    output = {}
+
+    for target in SEARCH_TARGETS:
+        output[target] = []
 
     #
     # Check that "search_statement" was provided
@@ -181,52 +200,67 @@ def post_legal_search():
         return jsonify({"error": "Search statement cannot be empty."}), 400
 
     #
-    # Search for opinions
+    # Check that "search_target" was provided
     #
-    try:
-        search_results = requests.get(
-            f"{api_url}search/",
-            timeout=10,
-            params={"type": "o", "q": search_statement},
-        ).json()
-    except Exception:
-        current_app.logger.error(traceback.format_exc())
-        return jsonify({"error": "Could not search for court opinions on Court Listener."}), 500
+    if "search_target" not in input:
+        return jsonify({"error": "No search target provided."}), 400
+
+    search_target = str(input["search_target"]).strip()
+
+    if not search_target:
+        return jsonify({"error": "Search target cannot be empty."}), 400
+
+    if search_target not in SEARCH_TARGETS:
+        return jsonify({"error": f"Search target can only be: {','.join(SEARCH_TARGETS)}."}), 400
 
     #
-    # Pull opinion text for the first X results
+    # Handle "courtlistener" search target
     #
-    for i in range(0, max_results):
-        if i > len(search_results["results"]) - 1:
-            break
-
-        opinion = dict(OPINION_DATA_TEMPLATE)
-
-        opinion_metadata = search_results["results"][i]
-        opinion["id"] = opinion_metadata["id"]
-        opinion["case_name"] = opinion_metadata["caseName"]
-        opinion["court"] = opinion_metadata["court"]
-        opinion["absolute_url"] = base_url + opinion_metadata["absolute_url"]
-        opinion["status"] = opinion_metadata["status"]
-        opinion["date_filed"] = opinion_metadata["dateFiled"]
-
-        # Pull opinion text
+    if search_target == "courtlistener":
         try:
-            opinion_data = requests.get(
-                f"{api_url}opinions/",
+            search_results = requests.get(
+                f"{api_url}search/",
                 timeout=10,
-                params={"id": opinion["id"]},
+                params={"type": "o", "q": search_statement},
             ).json()
-
-            opinion_data = opinion_data["results"][0]
-            opinion["text"] = html2text.html2text(opinion_data["html"])
-
         except Exception:
-            current_app.logger.error(f"Not data for opinion #{opinion['id']} on Court Listener.")
             current_app.logger.error(traceback.format_exc())
-            continue
+            return jsonify({"error": "Could not search for court opinions on Court Listener."}), 500
 
-        output.append(opinion)
+        # Pull opinion text for the first X results
+        for i in range(0, max_results):
+            if i > len(search_results["results"]) - 1:
+                break
+
+            opinion = dict(COURT_LISTENER_OPINION_DATA_TEMPLATE)
+
+            opinion_metadata = search_results["results"][i]
+            opinion["id"] = opinion_metadata["id"]
+            opinion["case_name"] = opinion_metadata["caseName"]
+            opinion["court"] = opinion_metadata["court"]
+            opinion["absolute_url"] = base_url + opinion_metadata["absolute_url"]
+            opinion["status"] = opinion_metadata["status"]
+            opinion["date_filed"] = opinion_metadata["dateFiled"]
+
+            # Pull opinion text
+            try:
+                opinion_data = requests.get(
+                    f"{api_url}opinions/",
+                    timeout=10,
+                    params={"id": opinion["id"]},
+                ).json()
+
+                opinion_data = opinion_data["results"][0]
+                opinion["text"] = html2text.html2text(opinion_data["html"])
+
+            except Exception:
+                current_app.logger.error(
+                    f"Not data for opinion #{opinion['id']} on Court Listener."
+                )
+                current_app.logger.error(traceback.format_exc())
+                continue
+
+            output["courtlistener"].append(opinion)
 
     return jsonify(output), 200
 
@@ -240,7 +274,7 @@ def post_complete():
     - "message": User prompt (required)
     - "model": One of the models /api/models lists (required)
     - "temperature": Defaults to 0.0
-    - "search_results": Output from /api/legal/search - List of OPINION_DATA_TEMPLATE objects.
+    - "search_results": Output from /api/legal/search.
     - "max_tokens": If provided, caps number of tokens that will be generated in response.
     - "history": A list of chat completion objects representing the chat history. Each object must contain "user" and "content".
 
@@ -257,7 +291,7 @@ def post_complete():
     input = request.get_json()
     model = None
     message = None
-    search_results = ""
+    search_results = {}
     temperature = 0.0
     max_tokens = None
 
@@ -294,8 +328,9 @@ def post_complete():
     #
     if "search_results" in input:
         try:
-            for result in input["search_results"]:
-                assert set(result.keys()) == set(OPINION_DATA_TEMPLATE.keys())
+            # Validate format for courtlistener entries
+            for result in input["search_results"]["courtlistener"]:
+                assert set(result.keys()) == set(COURT_LISTENER_OPINION_DATA_TEMPLATE.keys())
 
             search_results = input["search_results"]
         except Exception:
@@ -359,23 +394,28 @@ def post_complete():
     else:
         prompt = prompt.replace("{history}", "")
 
+    #
     # Context
-    for result in search_results:
-        case_name, date_filed, court, absolute_url = (
-            result["case_name"],
-            result["date_filed"],
-            result["court"],
-            result["absolute_url"],
-        )
+    #
 
-        absolute_url = os.environ["COURT_LISTENER_BASE_URL"] + absolute_url
+    # Prepare "courtlistener" search results
+    if "courtlistener" in search_results and search_results["courtlistener"]:
+        for result in search_results["courtlistener"]:
+            case_name, date_filed, court, absolute_url = (
+                result["case_name"],
+                result["date_filed"],
+                result["court"],
+                result["absolute_url"],
+            )
 
-        search_results_txt += (
-            f"{case_name} ({date_filed[0:4]}) {court} as sourced from {absolute_url}:\n"
-        )
+            absolute_url = os.environ["COURT_LISTENER_BASE_URL"] + absolute_url
 
-        search_results_txt += result["text"]
-        search_results_txt += "\n\n"
+            search_results_txt += (
+                f"{case_name} ({date_filed[0:4]}) {court} as sourced from {absolute_url}:\n"
+            )
+
+            search_results_txt += result["text"]
+            search_results_txt += "\n\n"
 
     if search_results_txt:
         rag_prompt = rag_prompt.replace("{rag}", search_results_txt)
