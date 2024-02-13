@@ -30,6 +30,12 @@ html {
   background-color: var(--background);
 }
 
+@media (max-width: 381px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 body {
 }
 
@@ -69,6 +75,7 @@ textarea {
   font-size: 1rem;
   padding: 0.75rem;
   resize: none;
+  line-height: 1.5rem;
 }
 
 select {
@@ -118,6 +125,47 @@ button:disabled {
 }
 
 /*------------------------------------------------------------------------------
+ * Dialog (generic)
+ -----------------------------------------------------------------------------*/
+ dialog {
+  width: 85ch;
+  max-width: 90%;
+  max-height: 80dvh;
+  margin: auto;
+  border: 0px;
+  padding: 2rem;
+  padding-top: 1rem;
+  border-radius: 0.25rem;
+  background-color: var(--color);
+  color: var(--background);
+  border: 1px solid var(--color--);
+}
+
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+/* "Close" button */
+dialog button.close {
+  position: absolute;
+  top: 1.65rem;
+  right: 1.5rem;
+  z-index: 2;
+  background-color: transparent;
+  color: var(--background);
+  text-decoration: underline;
+}
+
+dialog h2 {
+  position: relative;
+  border-bottom: 1px solid var(--color-);
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  font-weight: normal;
+}
+
+/*------------------------------------------------------------------------------
  * Layout
  -----------------------------------------------------------------------------*/
 body > main {
@@ -134,6 +182,12 @@ body > main {
   justify-content: space-between;
 }
 
+@media (max-width: 759px) {
+  body > main {
+    padding: 1rem;
+  }
+}
+
 /*------------------------------------------------------------------------------
  * Chat UI
  -----------------------------------------------------------------------------*/
@@ -143,6 +197,39 @@ body > main #chat {
   flex-direction: column;
   justify-content: space-between;
 }
+
+body > main #chat #chat-dialog {
+  overflow: auto;
+}
+
+@media (max-width: 759px) {
+  body > main #chat #chat-dialog {
+    min-height: 60dvh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+body > main #chat #chat-dialog img.placeholder {
+  display: block;
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 15ch;
+  min-height: 15ch;
+  width: 40ch;
+  object-fit: contain;
+}
+
+@media (max-width: 759px) {
+  body > main #chat #chat-dialog img.placeholder { 
+    width: 30ch;
+    min-width: 10ch;
+    min-height: 10ch;
+  }
+}
+
+
 
 body > main #chat #chat-input {
   border-bottom: 1px solid var(--background--);
@@ -181,6 +268,7 @@ body > main footer {
 body > main footer p {
   font-size: 0.85rem;
   opacity: 0.8;
+  line-height: 1.5rem;
 }
 
 body > main footer img {
