@@ -328,9 +328,15 @@ def post_complete():
     #
     if "search_results" in input:
         try:
+            # Top-level keys must e part of SEARCH_TARGETS
+            for key in input["search_results"].keys():
+                print(key)
+                assert key in SEARCH_TARGETS
+
             # Validate format for courtlistener entries
-            for result in input["search_results"]["courtlistener"]:
-                assert set(result.keys()) == set(COURT_LISTENER_OPINION_DATA_TEMPLATE.keys())
+            if "courtlistener" in input["search_results"].keys():
+                for result in input["search_results"]["courtlistener"]:
+                    assert set(result.keys()) == set(COURT_LISTENER_OPINION_DATA_TEMPLATE.keys())
 
             search_results = input["search_results"]
         except Exception:
@@ -355,7 +361,7 @@ def post_complete():
     #
     # Validate "max_tokens" if provided
     #
-    if "max_tokens" in input:
+    if "max_tokens" in input and input["max_tokens"] is not None:
         try:
             max_tokens = int(input["max_tokens"])
             assert max_tokens > 0

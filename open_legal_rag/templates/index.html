@@ -15,7 +15,7 @@
 
     <main>
       <div id="chat">
-        <div id="chat-dialog">
+        <div id="chat-conversation">
           <img class="placeholder" src="/static/images/illustration.png" alt="" aria-hidden="true"/>
         </div>
 
@@ -25,9 +25,9 @@
             placeholder="This chatbot can use tools such at the Court Listener API to try to answer legal questions." 
             required></textarea>
           
-          <div>
-            <button class="hollow" data-dialog="settings">Settings</button>
-            <button class="hollow" data-dialog="inspect">Inspect Session</button>
+          <div class="actions">
+            <button class="hollow" data-dialog-open="settings">Settings</button>
+            <button class="hollow" data-dialog-open="inspect">Inspect Session</button>
             <button class="ask" disabled>Ask</button>
           </div>
         </form>
@@ -47,7 +47,7 @@
       </footer>
     </main>
 
-    <dialog class="settings">
+    <dialog data-dialog="settings" class="settings">
       <button class="close">Close</button>
       <h2>Settings</h2>
 
@@ -55,7 +55,7 @@
         <label for="model">Model</label>
         <select id="model" name="model">
           {% for model in available_models %}
-          <option value="{{ model }}">{{ model }}</option>
+          <option value="{{ model }}" {% if model == best_default_model %}selected{% endif %}>{{ model }}</option>
           {% endfor %}
         </select>
 
@@ -71,7 +71,7 @@
       </form>
     </dialog>
 
-    <dialog class="inspect">
+    <dialog data-dialog="inspect" class="inspect">
       <button class="close">Close</button>
       <h2>Inspect Session</h2>
     </dialog>

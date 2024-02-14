@@ -48,6 +48,10 @@ a:hover {
   text-decoration: none;
 }
 
+.hidden {
+  display: none !important;
+}
+
 /*------------------------------------------------------------------------------
  * Forms (generic)
  -----------------------------------------------------------------------------*/
@@ -198,38 +202,39 @@ body > main #chat {
   justify-content: space-between;
 }
 
-body > main #chat #chat-dialog {
+body > main #chat #chat-conversation {
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 50dvh;
+  max-height: 60dvh;
 }
 
 @media (max-width: 759px) {
-  body > main #chat #chat-dialog {
+  body > main #chat #chat-conversation {
     min-height: 60dvh;
-    display: flex;
-    flex-direction: column;
+    max-height: 70dvh;
   }
 }
 
-body > main #chat #chat-dialog img.placeholder {
+body > main #chat #chat-conversation img.placeholder {
   display: block;
   margin: auto;
   max-width: 100%;
   max-height: 100%;
   min-width: 15ch;
   min-height: 15ch;
-  width: 40ch;
+  width: 35ch;
   object-fit: contain;
 }
 
 @media (max-width: 759px) {
-  body > main #chat #chat-dialog img.placeholder { 
+  body > main #chat #chat-conversation img.placeholder { 
     width: 30ch;
     min-width: 10ch;
     min-height: 10ch;
   }
 }
-
-
 
 body > main #chat #chat-input {
   border-bottom: 1px solid var(--background--);
@@ -251,7 +256,7 @@ body > main #chat #chat-input button.ask {
   border-top-left-radius: 0px;
 }
 
-body > main #chat #chat-input div {
+body > main #chat #chat-input .actions {
   text-align: right;
   position: relative;
   top: -0.65rem;
@@ -262,6 +267,7 @@ body > main #chat #chat-input div {
  -----------------------------------------------------------------------------*/
 body > main footer {
   padding-top: 1rem;
+  padding-bottom: 1rem;
   text-align: center;
 }
 
