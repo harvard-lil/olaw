@@ -330,7 +330,6 @@ def post_complete():
         try:
             # Top-level keys must e part of SEARCH_TARGETS
             for key in input["search_results"].keys():
-                print(key)
                 assert key in SEARCH_TARGETS
 
             # Validate format for courtlistener entries
