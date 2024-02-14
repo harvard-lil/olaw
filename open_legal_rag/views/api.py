@@ -423,7 +423,7 @@ def post_complete():
             search_results_txt += "\n\n"
 
     if search_results_txt:
-        rag_prompt = rag_prompt.replace("{rag}", search_results_txt)
+        rag_prompt = rag_prompt.replace("{context}", search_results_txt)
         prompt = prompt.replace("{rag}", rag_prompt)
     else:
         prompt = prompt.replace("{rag}", "")

@@ -57,8 +57,8 @@ const sanitizeString = (string, convertLineBreaks = true) => {
 /**
  * Injects a specialized chat bubble into `#chat-conversation`.
  * Populates history on the fly.
- * @param {String} type - Can be "user", "ai", "error", "confirm-search", "source-courtlistener".
- * @param {String} content - Textual content to be added to the bubble. Can be empty if type is: "confirm-search", "ai" or "source-courtlistener".
+ * @param {String} type - Can be "user", "ai", "error", "analyzing-request", "confirm-search", "source-courtlistener".
+ * @param {String} content - Textual content to be added to the bubble. Can be empty if type is: "analyzing-request", "confirm-search", "ai" or "source-courtlistener".
  * @param {Object} metadata - Meta-data associated with that chat bubble. Expected for "source-courtlistener" (`searchResults.courtlistener` entry).
  * 
  * Uses module-level variables:
@@ -75,7 +75,7 @@ const renderChatBubble = (type, message, metadata) => {
       chatConversation.insertAdjacentHTML(
         "beforeend", 
         /*html*/`
-        <article class="message user" contenteditable>
+        <article class="bubble user">
           <p class="text">${sanitizeString(message)}</p>
         </article>`
       );
@@ -91,9 +91,27 @@ const renderChatBubble = (type, message, metadata) => {
       chatConversation.insertAdjacentHTML(
         "beforeend", 
         /*html*/`
-        <article class="message ai">
+        <article class="bubble ai">
           <p class="model">${sanitizeString(modelSelect.value)}</p>
-          <p class="text" contenteditable></p>
+          <p class="text"></p>
+        </article>`
+      );
+
+      raiseLoadingMode();
+      // NOTE: History to be added once stream is complete -- see streamCompletion
+      // NOTE: Stream scrolls into conversation automatically
+    break;
+
+    //
+    // "analyzing-request"
+    //
+    case "analyzing-request":
+      chatConversation.insertAdjacentHTML(
+        "beforeend", 
+        /*html*/`
+        <article class="bubble ai">
+          <p class="model">System</p>
+          <p class="text">The chatbot is trying to identify a legal question in your request.</p>
         </article>`
       );
 
@@ -111,16 +129,17 @@ const renderChatBubble = (type, message, metadata) => {
       chatConversation.insertAdjacentHTML(
         "beforeend", 
         /*html*/`
-        <article class="message confirm-search">
+        <article class="bubble confirm-search">
+          <p class="model">${sanitizeString(modelSelect.value)}</p>
           <p class="text">
-            The chatbot detected a legal question. 
+            The chatbot detected a legal question.<br/> 
             Run the following query against ${searchTargetName}?<br>
             <code>${sanitizeString(searchStatement)}</code>
           </p>
 
           <div class="actions">
             <button class="confirm-search-yes">Yes, perform search.</button>
-            <button class="confirm-search-no">No.</button>
+            <button class="confirm-search-no">Skip.</button>
           </div>
         </article>`
       );
@@ -141,15 +160,32 @@ const renderChatBubble = (type, message, metadata) => {
       chatConversation.insertAdjacentHTML(
         "beforeend", 
         /*html*/`
-        <article class="message source">
+        <article class="bubble source">
           <p class="text">
-            <a href="${url}">${name} (${year})</a>
+            <a href="${url}" target="_blank" title="Open case in new tab">${name} (${year})</a>
             <span>${court}</span>
             <em>Source: CourtListener.com</em>
           </p>
         </article>`
       );
 
+      scrollIntoConversation();
+    break;
+
+    //
+    // "error"
+    //
+    case "error":
+      chatConversation.insertAdjacentHTML(
+        "beforeend", 
+        /*html*/`
+        <article class="bubble error">
+          <p class="text">An error occurred (see console for details), please try again.</p>
+        </article>`
+      );
+
+      clearAwaitingInteractionMode();
+      clearLoadingMode();
       scrollIntoConversation();
     break;
   }
@@ -301,8 +337,12 @@ chatInput.addEventListener("submit", async (e) => {
     button.setAttribute("disabled", "disabled");
   }
 
-  // Inject user message in UI
-  renderChatBubble("user", message)
+  // Inject "user" message in UI
+  renderChatBubble("user", message);
+
+  // Inject "analyzing-request" message in UI
+  await new Promise(resolve => setTimeout(resolve, 500));
+  renderChatBubble("analyzing-request", "");
 
   try {
     // Detect legal question / extract search statement
@@ -386,7 +426,7 @@ chatConversation.addEventListener("click", async e => {
       // Court Listener
       for (const entry of searchResults?.courtlistener) {
         renderChatBubble("source-courtlistener", "", entry);
-        await new Promise(resolve => setTimeout(resolve), 250);
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
     }
   } 

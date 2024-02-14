@@ -202,12 +202,14 @@ body > main #chat {
   justify-content: space-between;
 }
 
+/* Conversation UI */
 body > main #chat #chat-conversation {
   overflow: auto;
   display: flex;
   flex-direction: column;
   min-height: 50dvh;
-  max-height: 60dvh;
+  max-height: 70dvh;
+  transition: all 0.25 ease-in-out;
 }
 
 @media (max-width: 759px) {
@@ -228,6 +230,7 @@ body > main #chat #chat-conversation img.placeholder {
   object-fit: contain;
 }
 
+/* Chat bubbles */
 @media (max-width: 759px) {
   body > main #chat #chat-conversation img.placeholder { 
     width: 30ch;
@@ -236,6 +239,69 @@ body > main #chat #chat-conversation img.placeholder {
   }
 }
 
+body > main #chat #chat-conversation .bubble {
+  display: block;
+  width: fit-content;
+  max-width: 80%;
+  margin-left: auto;
+  background-color: var(--background-);
+  padding: 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5rem;
+}
+
+body > main #chat #chat-conversation .bubble.user {
+  margin-left: unset;
+  margin-right: auto;
+  background-color: var(--color);
+  color: var(--background);
+}
+
+body > main #chat #chat-conversation .bubble.source .text * {
+  display: block;
+}
+
+body > main #chat #chat-conversation .bubble code {
+  display: block;
+  padding: 1rem;
+  background-color: var(--background);
+  border-radius: 0.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+body > main #chat #chat-conversation .bubble .actions button {
+  background-color: transparent;
+  color: var(--color);
+  text-decoration: underline;
+  font-weight: normal;
+  padding-top: 0rem;
+  padding-bottom: 0rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+body > main #chat #chat-conversation .bubble .actions button:hover {
+  color: var(--color-);
+  text-decoration: none;
+}
+
+body > main #chat #chat-conversation .bubble .actions button:disabled {
+  background-color: transparent;
+  color: var(--color--);
+  text-decoration: none;
+}
+
+body > main #chat #chat-conversation .bubble .model {
+  font-weight: normal;
+  font-style: italic;
+  margin-bottom: 0.5rem;
+  color: var(--color--);
+}
+
+/* Chat Input */
 body > main #chat #chat-input {
   border-bottom: 1px solid var(--background--);
   padding: 2rem;
