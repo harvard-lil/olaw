@@ -65,7 +65,6 @@ const sanitizeString = (string, convertLineBreaks = true) => {
  * - searchResults
  */
 const renderChatBubble = (type, message, metadata) => {
-
   switch(type) {
     //
     // "user"
@@ -155,30 +154,6 @@ const renderChatBubble = (type, message, metadata) => {
 }
 
 /**
- * Adds contents of searchResults to UI.
- * 
- * Uses module-level variables:
- * - searchResults
- * 
- * @returns {void}
- */
-const renderSearchResults = () => {
-  console.log(searchResults)
-  // Court Listener
-  for (const entry of searchResults?.courtlistener) {
-    renderChatBubble("source-courtlistener", "", entry);
-  }
-}
-
-const scrollIntoConversation = () => {
-  chatConversation.scroll({
-    top: chatConversation.scrollHeight,
-    left: 0,
-    behavior: "smooth"
-  });
-}
-
-/**
  * Runs a request against /api/complete and stream results in a "AI" chat bubble.
  * 
  * Uses module-level variables:
@@ -248,7 +223,6 @@ const raiseLoadingMode = () => {
   messageInput.value = "Please wait ...";
 }
 
-
 const clearLoadingMode = () => {
   isLoading = false;
   messageInput.removeAttribute("disabled");
@@ -267,6 +241,17 @@ const clearAwaitingInteractionMode = () => {
     button.setAttribute("disabled", "disabled");
   }
 } 
+
+/**
+ * Automatically scrolls down #chat-conversation
+ */
+const scrollIntoConversation = () => {
+  chatConversation.scroll({
+    top: chatConversation.scrollHeight,
+    left: 0,
+    behavior: "smooth"
+  });
+}
 
 /*------------------------------------------------------------------------------
  * Chat Mechanism
@@ -395,7 +380,12 @@ chatConversation.addEventListener("click", async e => {
       });
   
       searchResults = await response.json();
-      renderSearchResults();
+
+      // Court Listener
+      for (const entry of searchResults?.courtlistener) {
+        renderChatBubble("source-courtlistener", "", entry);
+        await new Promise(resolve => setTimeout(resolve), 250);
+      }
     }
   } 
   // Catch-all: inject error message
