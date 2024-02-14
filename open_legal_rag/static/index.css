@@ -128,6 +128,14 @@ button:disabled {
   cursor: not-allowed;
 }
 
+button.hollow:disabled {
+  background-color: transparent;
+  font-weight: normal;
+  color: var(--color--);
+  text-decoration: none;
+}
+
+
 /*------------------------------------------------------------------------------
  * Dialog (generic)
  -----------------------------------------------------------------------------*/
@@ -256,6 +264,10 @@ body > main #chat #chat-conversation .bubble.user {
   margin-right: auto;
   background-color: var(--color);
   color: var(--background);
+}
+
+body > main #chat #chat-conversation .bubble.ai .text {
+  white-space: pre-line;
 }
 
 body > main #chat #chat-conversation .bubble.source .text * {

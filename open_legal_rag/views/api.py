@@ -21,6 +21,7 @@ SEARCH_TARGETS = ["courtlistener"]
 """
 
 COURT_LISTENER_OPINION_DATA_TEMPLATE = {
+    "ref_tag": "",  # IE: [1]
     "id": "",
     "case_name": "",
     "court": "",
@@ -235,6 +236,7 @@ def post_legal_search():
             opinion = dict(COURT_LISTENER_OPINION_DATA_TEMPLATE)
 
             opinion_metadata = search_results["results"][i]
+            opinion["ref_tag"] = i + 1
             opinion["id"] = opinion_metadata["id"]
             opinion["case_name"] = opinion_metadata["caseName"]
             opinion["court"] = opinion_metadata["court"]
@@ -406,7 +408,8 @@ def post_complete():
     # Prepare "courtlistener" search results
     if "courtlistener" in search_results and search_results["courtlistener"]:
         for result in search_results["courtlistener"]:
-            case_name, date_filed, court, absolute_url = (
+            ref_tag, case_name, date_filed, court, absolute_url = (
+                result["ref_tag"],
                 result["case_name"],
                 result["date_filed"],
                 result["court"],
@@ -415,9 +418,7 @@ def post_complete():
 
             absolute_url = os.environ["COURT_LISTENER_BASE_URL"] + absolute_url
 
-            search_results_txt += (
-                f"{case_name} ({date_filed[0:4]}) {court} as sourced from {absolute_url}:\n"
-            )
+            search_results_txt += f"[{ref_tag}] {case_name} ({date_filed[0:4]}) {court} as sourced from {absolute_url}:\n"
 
             search_results_txt += result["text"]
             search_results_txt += "\n\n"

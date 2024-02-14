@@ -32,6 +32,7 @@ const chatPlaceholder = document.querySelector("#chat .placeholder")
 
 const messageInput = document.querySelector("#message");
 const askButton = document.querySelector("button.ask");
+const stopButton = document.querySelector("button.stop");
 
 /*------------------------------------------------------------------------------
  * Utility 
@@ -152,6 +153,7 @@ const renderChatBubble = (type, message, metadata) => {
     // "source-courtlistener"
     //
     case "source-courtlistener":
+      const refTag = sanitizeString(`${metadata.ref_tag}`, false);
       const url = sanitizeString(metadata.absolute_url, false);
       const year = sanitizeString(metadata.date_filed.substr(0,4), false);
       const name = sanitizeString(metadata.case_name, false);
@@ -162,7 +164,9 @@ const renderChatBubble = (type, message, metadata) => {
         /*html*/`
         <article class="bubble source">
           <p class="text">
-            <a href="${url}" target="_blank" title="Open case in new tab">${name} (${year})</a>
+            <a href="${url}" target="_blank" title="Open case in new tab">
+              [${refTag}] ${name} (${year})
+            </a>
             <span>${court}</span>
             <em>Source: CourtListener.com</em>
           </p>
@@ -235,20 +239,26 @@ const streamCompletion = async () => {
   const responseStream = response.body.getReader();
   const decoder = new TextDecoder();
 
+  // Activate "stop" button
+  stopButton.removeAttribute("disabled");
+ 
   while (true) {
     const {done, value} = await responseStream.read();
 
     const textChunk = decoder.decode(value, {stream:true});
 
     output += textChunk;
-    aiBubbleText.innerText = aiBubbleText.innerText + textChunk;
-
+    aiBubbleText.textContent = aiBubbleText.textContent + textChunk;
+    
     scrollIntoConversation();
 
-    if (done) {
+    if (done || !isLoading) {
       break;
     }
   }
+
+  // De-activate "stop" button
+  stopButton.setAttribute("disabled", "disabled");
 
   // Add resulting message to history
   history.push({"role": "assistant", "content": output});
@@ -432,7 +442,8 @@ chatConversation.addEventListener("click", async e => {
   } 
   // Catch-all: inject error message
   catch (err) {
-    renderChatBubble("Could not perform requested search.");
+    console.log(err);
+    renderChatBubble("error", "Could not perform requested search.");
   }
   // In any case:
   // - Disable buttons for that "confirm-search" action
@@ -468,6 +479,14 @@ setInterval(() => {
     askButton.setAttribute("disabled", "disabled");
   }
 }, 100);
+
+/**
+ * "Stop" button mechanic
+ */
+stopButton.addEventListener("click", e => {
+  e.preventDefault();
+  clearLoadingMode();
+})
 
 /*------------------------------------------------------------------------------
  * Handling of dialogs (generic)
