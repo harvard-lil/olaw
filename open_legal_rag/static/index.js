@@ -8,10 +8,7 @@
 let history = [];
 
 /** If `true`, user should not be able to send another request. */
-let isLoading = false;
-
-/** If `true`, indicates that the chatbot is awaiting non-text interaction (i.e: click on a button) */
-let isAwaitingInteraction = false;
+let locked = false;
 
 /** Latest "search_statement" returned by the API */
 let searchStatement = null;
@@ -35,7 +32,7 @@ const askButton = document.querySelector("button.ask");
 const stopButton = document.querySelector("button.stop");
 
 /*------------------------------------------------------------------------------
- * Utility 
+ * Module-level functions 
  -----------------------------------------------------------------------------*/
 /**
  * Escapes a string so it can be rendered as part of an HTML document.
@@ -69,9 +66,7 @@ const sanitizeString = (string, convertLineBreaks = true) => {
  */
 const renderChatBubble = (type, message, metadata) => {
   switch(type) {
-    //
-    // "user"
-    //
+
     case "user":
       chatConversation.insertAdjacentHTML(
         "beforeend", 
@@ -85,9 +80,6 @@ const renderChatBubble = (type, message, metadata) => {
       scrollIntoConversation();
     break;
 
-    //
-    // "ai"
-    //
     case "ai":
       chatConversation.insertAdjacentHTML(
         "beforeend", 
@@ -97,15 +89,11 @@ const renderChatBubble = (type, message, metadata) => {
           <p class="text"></p>
         </article>`
       );
-
-      raiseLoadingMode();
       // NOTE: History to be added once stream is complete -- see streamCompletion
       // NOTE: Stream scrolls into conversation automatically
     break;
 
-    //
-    // "analyzing-request"
-    //
+
     case "analyzing-request":
       chatConversation.insertAdjacentHTML(
         "beforeend", 
@@ -115,15 +103,10 @@ const renderChatBubble = (type, message, metadata) => {
           <p class="text">The chatbot is trying to identify a legal question in your request.</p>
         </article>`
       );
-
-      raiseLoadingMode();
       // NOTE: History to be added once stream is complete -- see streamCompletion
       // NOTE: Stream scrolls into conversation automatically
     break;
 
-    //
-    // "confirm-search": Asks user to confirm search
-    //
     case "confirm-search":
       const searchTargetName = searchTarget === "courtlistener" ? "the Court Listener API" : "";
 
@@ -145,13 +128,9 @@ const renderChatBubble = (type, message, metadata) => {
         </article>`
       );
 
-      raiseAwaitingInteractionMode();
       scrollIntoConversation();
     break;
 
-    //
-    // "source-courtlistener"
-    //
     case "source-courtlistener":
       const refTag = sanitizeString(`${metadata.ref_tag}`, false);
       const url = sanitizeString(metadata.absolute_url, false);
@@ -176,9 +155,6 @@ const renderChatBubble = (type, message, metadata) => {
       scrollIntoConversation();
     break;
 
-    //
-    // "error"
-    //
     case "error":
       chatConversation.insertAdjacentHTML(
         "beforeend", 
@@ -187,9 +163,6 @@ const renderChatBubble = (type, message, metadata) => {
           <p class="text">An error occurred (see console for details), please try again.</p>
         </article>`
       );
-
-      clearAwaitingInteractionMode();
-      clearLoadingMode();
       scrollIntoConversation();
     break;
   }
@@ -201,6 +174,8 @@ const renderChatBubble = (type, message, metadata) => {
  * Uses module-level variables:
  * - searchResults
  * - history
+ * 
+ * Automatically deactivates "locked" mode after completion.
  * 
  * @returns {void}
  */
@@ -227,8 +202,9 @@ const streamCompletion = async () => {
   });
 
   if (response.status != 200) {
-    renderChatBubble("error", `Could not communicate with ${sanitizeString(model)}.`)
-    return
+    renderChatBubble("error", `Could not communicate with ${sanitizeString(model)}.`);
+    unlock();
+    return;
   }
 
   // Append "ai" bubble
@@ -258,7 +234,7 @@ const streamCompletion = async () => {
     
     scrollIntoConversation();
 
-    if (done || !isLoading) {
+    if (done || !locked) {
       break;
     }
   }
@@ -269,35 +245,38 @@ const streamCompletion = async () => {
   // Add resulting message to history
   history.push({"role": "assistant", "content": output});
 
+  unlock();
 }
 
-const raiseLoadingMode = () => {
-  isLoading = true;
+const lock = () => {
+  locked = true;
+
+  // Disable chat input
   messageInput.setAttribute("disabled", "disabled");
   messageInput.value = "Please wait ...";
 }
 
-const clearLoadingMode = () => {
-  isLoading = false;
+const unlock = () => {
+  locked = false;
+
+  // Re-enable chat input
   messageInput.removeAttribute("disabled");
   messageInput.value = "";
+
+  disableInteractionButtons();
 }
 
-const raiseAwaitingInteractionMode = () => {
-  isAwaitingInteraction = true;
-} 
-
-const clearAwaitingInteractionMode = () => {
-  isAwaitingInteraction = false;
-
+const disableInteractionButtons = () => {
   // Disable any remaining active interaction buttons in "#chat-conversation"
   for (const button of chatConversation.querySelectorAll("button")) {
     button.setAttribute("disabled", "disabled");
   }
-} 
+}
+
 
 /**
  * Automatically scrolls down #chat-conversation
+ * @returns {void}
  */
 const scrollIntoConversation = () => {
   chatConversation.scroll({
@@ -314,7 +293,7 @@ const scrollIntoConversation = () => {
  * On "chat" form submit:
  * - Hide placeholder visual
  * - Inject user message into UI
- * - Trigger loading state 
+ * - Trigger locked mode
  * - Run request against /api/legal/extract-search-statement
  * - If API returns a search_statement 
  *   - Ask user to confirm search
@@ -332,18 +311,18 @@ chatInput.addEventListener("submit", async (e) => {
   const model = modelSelect.value.trim();
   const temperature = temperatureSelect.value;
 
-  // Cannot submit if awaiting interaction
-  if (isAwaitingInteraction) {
+  // Cannot submit if locked
+  if (locked) {
     return;
   }
+
+  // Trigger locked mode
+  lock();
 
   // Reset search state
   searchResults = {};
   searchStatement = "";
   searchTarget = "";
-
-  // Trigger loading mode
-  raiseLoadingMode();
 
   // Hide placeholder
   chatPlaceholder.classList.add("hidden");
@@ -383,19 +362,10 @@ chatInput.addEventListener("submit", async (e) => {
     else {
       await streamCompletion();
     }
-
-    messageInput.value = "";
   } 
-  // Catch-all: 
-  // - Reset loading state
-  // - Put user message back in input.
   catch(err) {
-    clearAwaitingInteractionMode();
-    clearLoadingMode();
     console.log(err);
-  // In any case: clear loading mode.
-  } finally {
-    clearLoadingMode();
+    unlock();
   }
 
 });
@@ -406,8 +376,7 @@ chatInput.addEventListener("submit", async (e) => {
  * - NO: Stream LLM completion
  */
 chatConversation.addEventListener("click", async e => {
-  // Stop here if chatbot is not awaiting interaction
-  if (!isAwaitingInteraction ) {
+  if (!locked ) {
     return;
   }
 
@@ -417,10 +386,9 @@ chatConversation.addEventListener("click", async e => {
   ) {
     return;
   }
-
+  
   e.preventDefault();
-  clearAwaitingInteractionMode();
-  raiseLoadingMode();
+  disableInteractionButtons();
 
   try {
     // User accepts suggested search query:
@@ -451,13 +419,9 @@ chatConversation.addEventListener("click", async e => {
     console.log(err);
     renderChatBubble("error", "Could not perform requested search.");
   }
-  // In any case:
-  // - Disable buttons for that "confirm-search" action
-  // - Stream completion
-  // - Disable pending flag
+  // In any case: stream completion
   finally {
     await streamCompletion();
-    clearLoadingMode();
   }
 
 });
@@ -473,13 +437,7 @@ setInterval(() => {
   const maxTokensOk = maxTokensInput.value === "" || maxTokensInput.value.match(/[0-9]+/) != null;
 
   // Activate "Ask" button if all is OK
-  if (!isLoading && 
-      !isAwaitingInteraction && 
-      messageOk && 
-      modelOk && 
-      temperatureOk && 
-      maxTokensOk
-  ) {
+  if (!locked && messageOk &&  modelOk && temperatureOk && maxTokensOk) {
     askButton.removeAttribute("disabled");
   } else {
     askButton.setAttribute("disabled", "disabled");
@@ -491,7 +449,7 @@ setInterval(() => {
  */
 stopButton.addEventListener("click", e => {
   e.preventDefault();
-  clearLoadingMode();
+  unlock();
 })
 
 /*------------------------------------------------------------------------------
