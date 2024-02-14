@@ -245,7 +245,13 @@ const streamCompletion = async () => {
   while (true) {
     const {done, value} = await responseStream.read();
 
-    const textChunk = decoder.decode(value, {stream:true});
+    let textChunk = decoder.decode(value, {stream:true});
+
+    // Strip common markdown markers
+    // [!] Temporary - should be replaced by proper markdown strip or interpreter.
+    textChunk = textChunk.replace("**", "")
+    textChunk = textChunk.replace("##", "")
+    textChunk = textChunk.replace("###", "")
 
     output += textChunk;
     aiBubbleText.textContent = aiBubbleText.textContent + textChunk;
