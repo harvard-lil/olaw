@@ -16,7 +16,7 @@ let searchStatement = null;
 /** Latest "search_target" returned by the API */
 let searchTarget = null;
 
-/** Latest output from /api/legal/search */
+/** Latest output from /api/search */
 let searchResults = {};
 
 const modelSelect = document.querySelector("#model");
@@ -294,11 +294,11 @@ const scrollIntoConversation = () => {
  * - Hide placeholder visual
  * - Inject user message into UI
  * - Trigger locked mode
- * - Run request against /api/legal/extract-search-statement
+ * - Run request against /api/extract-search-statement
  * - If API returns a search_statement 
  *   - Ask user to confirm search
  *   - Confirms: 
- *     - Run query against /api/legal/search
+ *     - Run query against /api/search
  *     - Display results
  *     - Run and stream LLM completion with additional context
  * - If API returns no search_statement or user rejects suggestion:
@@ -341,7 +341,7 @@ chatInput.addEventListener("submit", async (e) => {
 
   try {
     // Detect legal question / extract search statement
-    const searchStatementResponse = await fetch("/api/legal/extract-search-statement", {
+    const searchStatementResponse = await fetch("/api/extract-search-statement", {
       method: "POST",
       headers: {"content-type": "application/json"},
       body: JSON.stringify({message, model, temperature})
@@ -396,7 +396,7 @@ chatConversation.addEventListener("click", async e => {
     // - Display search results
     // - Run completion
     if (e.target.classList.contains("confirm-search-yes")) {
-      const response =  await fetch("/api/legal/search", {
+      const response =  await fetch("/api/search", {
         method: "POST",
         headers: {"content-type": "application/json"},
         body: JSON.stringify({

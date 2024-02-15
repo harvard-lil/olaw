@@ -15,7 +15,7 @@ def check_env() -> bool:
     for prop in [
         "COURT_LISTENER_API_TOKEN",
         "COURT_LISTENER_MAX_RESULTS",
-        "EXTRACT_LEGAL_QUERY_PROMPT",
+        "EXTRACT_SEARCH_STATEMENT_PROMPT",
         "COURT_LISTENER_API_URL",
         "COURT_LISTENER_BASE_URL",
         "TEXT_COMPLETION_BASE_PROMPT",

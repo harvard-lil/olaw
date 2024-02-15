@@ -1,2 +1,2 @@
-from .api import get_models, post_legal_extract_question, post_legal_search, post_complete
-from .ui import get_root
+import open_legal_rag.views.ui
+import open_legal_rag.views.api
