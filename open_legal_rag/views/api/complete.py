@@ -6,8 +6,7 @@ from openai import OpenAI
 import ollama
 
 from open_legal_rag.utils import list_available_models
-from open_legal_rag.search_targets import SEARCH_TARGETS
-from open_legal_rag.data_formats import COURTLISTENER_OPINION_DATA_FORMAT
+from open_legal_rag.const import SEARCH_TARGETS, COURTLISTENER_OPINION_DATA_FORMAT
 
 
 @current_app.route("/api/complete", methods=["POST"])

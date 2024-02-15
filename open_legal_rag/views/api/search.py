@@ -4,8 +4,7 @@ import requests
 import html2text
 from flask import current_app, jsonify, request
 
-from open_legal_rag.search_targets import SEARCH_TARGETS
-from open_legal_rag.data_formats import COURTLISTENER_OPINION_DATA_FORMAT
+from open_legal_rag.const import SEARCH_TARGETS, COURTLISTENER_OPINION_DATA_FORMAT
 
 
 @current_app.route("/api/search", methods=["POST"])
