@@ -30,7 +30,10 @@ def list_available_models() -> list:
 
     if os.environ.get("OLLAMA_API_URL"):
         try:
-            ollama_client = ollama.Client(host=os.environ["OLLAMA_API_URL"])
+            ollama_client = ollama.Client(
+                host=os.environ["OLLAMA_API_URL"],
+                timeout=5,
+            )
 
             for model in ollama_client.list()["models"]:
                 models.append(f"ollama/{model['name']}")

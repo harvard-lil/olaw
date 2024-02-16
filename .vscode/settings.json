@@ -1,14 +1,6 @@
 {
   "editor.formatOnSave": true,
   "python.formatting.provider": "black",
-  "files.associations": {
-      "*.html": "html",
-      "*.js": "javascript"
-  },
-  "[html]": {
-    "editor.formatOnSave": false
-  },
-  "[javascript]": {
-    "editor.formatOnSave": false
-  }
+  "standard.enable": false,
+  "standard.autoFixOnSave": true
 }
