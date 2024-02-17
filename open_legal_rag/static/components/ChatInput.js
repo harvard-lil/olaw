@@ -10,7 +10,6 @@ import { state } from "/static/state.js";
  *
  * Automatically populates:
  * - `state.message` (on key up)
- * - `state.processing` (on click on "Ask")
  *
  * Automatically enable / disable relevant inputs based on app state.
  */
@@ -52,17 +51,16 @@ export class ChatInput extends HTMLElement {
       });
     }
 
+    // Event listener for submit ("Ask")
+    this.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      document.querySelector("chat-flow").ask();
+    });
+
     // Event listener for "Stop"
     this.stopButtonRef.addEventListener("click", (e) => {
       e.preventDefault();
-      state.processing = false;
-    });
-
-    // Event listener for "Ask"
-    this.askButtonRef.addEventListener("click", (e) => {
-      e.preventDefault();
-      state.processing = true;
-      document.querySelector("chat-flow").ask();
+      document.querySelector("chat-flow").stop();
     });
 
     // Event listener to capture text input (message)
@@ -94,7 +92,7 @@ export class ChatInput extends HTMLElement {
     }
 
     // "Ask" button is enabled when:
-    // - A message was provided in textarea
+    // - A message was provided
     // - A model was picked
     // - A temperature was picked
     // - App is not processing
@@ -102,7 +100,7 @@ export class ChatInput extends HTMLElement {
       !state.processing &&
       state.model &&
       state.temperature != null &&
-      state.message !== ""
+      state.message
     ) {
       this.askButtonRef.removeAttribute("disabled");
     } else {

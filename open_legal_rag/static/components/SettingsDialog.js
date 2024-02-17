@@ -1,5 +1,16 @@
 import { state } from "/static/state.js";
 
+/**
+ * UI Element containing:
+ * - "model" setting
+ * - "temperature" setting
+ * - "max_tokens" setting
+ *
+ * Automatically populates:
+ * - `state.model` (on change)
+ * - `state.temperature` (on change)
+ * - `state.max_tokens` (on key up)
+ */
 export class SettingsDialog extends HTMLElement {
   connectedCallback() {
     // Enforce singleton

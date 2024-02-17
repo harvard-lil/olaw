@@ -3,7 +3,7 @@ import { state } from "/static/state.js";
 /**
  * UI Element representing a chat bubble.
  *
- * Available values for "type":
+ * Available values for "type" attribute:
  * - "user": User message
  * - "ai": Message from AI.
  * - "error": Standard error message.
@@ -11,13 +11,9 @@ import { state } from "/static/state.js";
  * - "confirm-search": Interactive message asking the user to confirm before performing a RAG search.
  * - "sources": Message listing sources (state.searchResults)
  *
- * Uses state to determine content.
+ * Uses app state + type to determine what contents to render.
  */
 export class ChatBubble extends HTMLElement {
-  static get observedAttributes() {
-    return ["type"];
-  }
-
   connectedCallback() {
     const type = this.getAttribute("type");
 
@@ -37,17 +33,22 @@ export class ChatBubble extends HTMLElement {
       case "confirm-search":
         this.renderConfirmSearchBubble();
 
-        // Event listener for the "confirm" button
-        this.querySelector(`button[data-action="confirm"]`).addEventListener(
-          "click",
-          (e) => {}
-        );
+        const confirmButton = this.querySelector(`[data-action="confirm"]`);
+        const rejectButton = this.querySelector(`[data-action="reject"]`);
 
-        // Event listener for the "reject" button
-        this.querySelector(`button[data-action="confirm"]`).addEventListener(
-          "reject",
-          (e) => {}
-        );
+        // Event listener for the "confirm" button
+        confirmButton.addEventListener("click", (e) => {
+          confirmButton.setAttribute("disabled", "disabled");
+          rejectButton.setAttribute("disabled", "disabled");
+          document.querySelector("chat-flow").search();
+        });
+
+        // Event listener for the "reject" button:
+        rejectButton.addEventListener("reject", (e) => {
+          confirmButton.setAttribute("disabled", "disabled");
+          rejectButton.setAttribute("disabled", "disabled");
+          document.querySelector("chat-flow").streamCompletion();
+        });
 
         break;
 
@@ -69,7 +70,7 @@ export class ChatBubble extends HTMLElement {
    */
   renderUserBubble = () => {
     this.innerHTML = /*html*/ `
-      <p class="text">${this.sanitizeString(state.message)}</p>
+    <p class="text">${this.sanitizeString(state.message)}</p>
     `;
   };
 
@@ -80,8 +81,8 @@ export class ChatBubble extends HTMLElement {
    */
   renderAIBubble = () => {
     this.innerHTML = /*html*/ `
-      <p class="model">${this.sanitizeString(state.model)}</p>
-      <p class="text"></p>
+    <p class="model">${this.sanitizeString(state.model)}</p>
+    <p class="text"></p>
     `;
   };
 
@@ -91,8 +92,8 @@ export class ChatBubble extends HTMLElement {
    */
   renderAnalyzingRequestBubble = () => {
     this.innerHTML = /*html*/ `
-      <p class="model">System</p>
-      <p class="text">The chatbot is trying to identify a legal question in your request.</p>
+    <p class="model">System</p>
+    <p class="text">The chatbot is trying to identify a legal question in your request.</p>
     `;
   };
 
@@ -101,8 +102,8 @@ export class ChatBubble extends HTMLElement {
    * @returns {void}
    */
   renderConfirmSearchBubble = () => {
-    const searchTargetName = sanitizeString(state.searchTargetName);
-    const searchStatement = sanitizeString(state.searchStatement);
+    const searchTargetName = this.sanitizeString(state.searchTarget);
+    const searchStatement = this.sanitizeString(state.searchStatement);
 
     this.innerHTML = /*html*/ `
     <p class="model">${this.sanitizeString(state.model)}</p>
@@ -124,31 +125,31 @@ export class ChatBubble extends HTMLElement {
    * @returns {void}
    */
   renderSourcesBubble = () => {
-    const searchTargetName = sanitizeString(state.searchTargetName);
+    const searchTargetName = this.sanitizeString(state.searchTarget);
     let sourcesText = "";
 
     // courtlistener
     for (const source of state.searchResults?.courtlistener) {
-      const refTag = sanitizeString(`${source.ref_tag}`, false);
-      const url = sanitizeString(source.absolute_url, false);
-      const year = sanitizeString(source.date_filed.substr(0, 4), false);
-      const name = sanitizeString(source.case_name, false);
-      const court = sanitizeString(source.court, false);
+      const refTag = this.sanitizeString(`${source.ref_tag}`, false);
+      const url = this.sanitizeString(source.absolute_url, false);
+      const year = this.sanitizeString(source.date_filed.substr(0, 4), false);
+      const name = this.sanitizeString(source.case_name, false);
+      const court = this.sanitizeString(source.court, false);
 
       sourcesText += /*html*/ `
-        <p class="text">
-          <a href="${url}" target="_blank" title="Open case in new tab">
-            [${refTag}] ${name} (${year})
-          </a>
-          <span>${court}</span>
-          <em>Source: CourtListener.com</em>
-        </p>
+      <p class="text">
+        <a href="${url}" target="_blank" title="Open opinion in new tab">
+          [${refTag}] ${name} (${year})
+        </a>
+        <span>${court}</span>
+        <em>Source: CourtListener.com</em>
+      </p>
       `;
     }
 
     this.innerHTML = /*html*/ `
-      <p class="model">${searchTargetName}</p>
-      ${sourcesText}
+    <p class="model">${searchTargetName}</p>
+    ${sourcesText}
     `;
   };
 
@@ -156,7 +157,7 @@ export class ChatBubble extends HTMLElement {
    * Renders an "error" bubble.
    * @returns {void}
    */
-  renderAnalyzingRequestBubble = () => {
+  renderErrorBubble = () => {
     this.innerHTML = /*html*/ `
     <p class="text">An error occurred (see console for details), please try again.</p>
     `;

@@ -4,6 +4,7 @@
  * @property {{role: string, content: string}[]} history - Keeps track of "basic" chat history. To be fed back to the API with each exchange.
  * @property {string[]} availableModels - List of models that can be used.
  * @property {string} defaultModel - Model to be used by default.
+ * @property {string[]} availableSearchTargets - List of valid search targets.
  * @property {?string} searchStatement - Latest `search_target` returned by the API (`/api/extract-search-statement`).
  * @property {?string} searchTarget - Latest `search_target` returned by the API (`/api/extract-search-statement`).
  * @property {object} searchResults - Latest output from `/api/search`.
@@ -21,9 +22,10 @@ export const state = {
   history: [],
   availableModels: window.OPEN_LEGAL_RAG_CONST.available_models,
   defaultModel: window.OPEN_LEGAL_RAG_CONST.default_model,
-  searchStatement: null,
-  searchTarget: null,
-  searchResults: null,
+  availableSearchTargets: window.OPEN_LEGAL_RAG_CONST.available_search_targets,
+  searchStatement: "",
+  searchTarget: "",
+  searchResults: {},
   message: null,
   model: window.OPEN_LEGAL_RAG_CONST.default_model,
   temperature: 0.0,

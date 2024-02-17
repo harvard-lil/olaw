@@ -3,6 +3,7 @@ import json
 
 from flask import current_app, render_template
 
+from open_legal_rag.const import SEARCH_TARGETS
 from open_legal_rag.utils import list_available_models
 
 
@@ -30,6 +31,7 @@ def get_root():
     # Compile consts to be passed to app
     #
     app_consts = {
+        "available_search_targets": SEARCH_TARGETS,
         "available_models": available_models,
         "default_model": default_model,
         "extract_search_statement_prompt": os.environ["EXTRACT_SEARCH_STATEMENT_PROMPT"],
