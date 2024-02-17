@@ -1,8 +1,6 @@
 import { state } from "/static/state.js";
 
 export class InspectDialog extends HTMLElement {
-  static get observedAttributes() {}
-
   connectedCallback() {
     // Enforce singleton
     for (const node of [...document.querySelectorAll("chat-flow")].slice(1)) {
@@ -12,8 +10,29 @@ export class InspectDialog extends HTMLElement {
     this.renderInnerHTML();
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {}
+  /**
+   * Opens underlying `<dialog>`
+   * @returns {void}
+   */
+  open = () => {
+    this.querySelector("dialog").showModal();
+  };
 
-  renderInnerHTML() {}
+  /**
+   * Closes underlying `<dialog>`
+   * @returns {void}
+   */
+  close = () => {
+    this.querySelector("dialog").close();
+  };
+
+  renderInnerHTML = () => {
+    this.innerHTML = /*html*/ `
+    <dialog>
+      <button class="close">Close</button>
+      <h2>Inspect Session</h2>
+    </dialog>
+    `;
+  };
 }
 customElements.define("inspect-dialog", InspectDialog);

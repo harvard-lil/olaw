@@ -11,7 +11,10 @@
  * @type {OpenLegalRagState}
  */
 export const state = {
+  processing: false,
   history: [],
+  availableModels: window.OPEN_LEGAL_RAG_CONST.available_models,
+  defaultModel: window.OPEN_LEGAL_RAG_CONST.default_model,
   searchStatement: null,
   searchTarget: null,
   searchResults: null,

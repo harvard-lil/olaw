@@ -2,94 +2,67 @@
 <html lang="en" data-theme="light">
   <head>
     <title>Open Legal RAG</title>
-    <meta name="description" content="A Retrieval Augmented Generation Research Workbench for Case Law.">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+      name="description"
+      content="A Retrieval Augmented Generation Research Workbench for Case Law."
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="/static/index.css">
+    <script>
+      // App-wide consts coming from the back-end
+      window.OPEN_LEGAL_RAG_CONST = {{ app_consts | safe }};
+    </script>
+
+    <link rel="stylesheet" href="/static/index.css" />
     <script type="module" src="/static/index.js"></script>
 
     <script type="module" src="/static/components/ChatBubble.js"></script>
-    <link rel="stylesheet" href="/static/components/ChatBubble.css">
+    <link rel="stylesheet" href="/static/components/ChatBubble.css" />
 
     <script type="module" src="/static/components/ChatFlow.js"></script>
-    <link rel="stylesheet" href="/static/components/ChatFlow.css">
+    <link rel="stylesheet" href="/static/components/ChatFlow.css" />
 
     <script type="module" src="/static/components/ChatInput.js"></script>
-    <link rel="stylesheet" href="/static/components/ChatInput.css">
+    <link rel="stylesheet" href="/static/components/ChatInput.css" />
 
     <script type="module" src="/static/components/InspectDialog.js"></script>
-    <link rel="stylesheet" href="/static/components/InspectDialog.css">
+    <link rel="stylesheet" href="/static/components/InspectDialog.css" />
 
     <script type="module" src="/static/components/SettingsDialog.js"></script>
-    <link rel="stylesheet" href="/static/components/SettingsDialog.css">
+    <link rel="stylesheet" href="/static/components/SettingsDialog.css" />
   </head>
 
   <body>
-
     <main>
       <div id="chat">
-        <div id="chat-conversation">
-          <img class="placeholder" src="/static/images/illustration.png" alt="" aria-hidden="true"/>
-        </div>
-
-        <form id="chat-input">
-          <textarea 
-            id="message" 
-            placeholder="This chatbot can use tools such at the Court Listener API to try to answer legal questions." 
-            required></textarea>
-          
-          <div class="actions">
-            <button class="hollow" data-dialog-open="settings">Settings</button>
-            <button class="hollow" data-dialog-open="inspect">Inspect</button>
-            <button class="hollow stop" disabled>Stop</button>
-            <button class="ask" disabled>Ask</button>
-          </div>
-        </form>
+        <chat-flow></chat-flow>
+        <chat-input></chat-input>
       </div>
 
       <footer>
         <a href="https://lil.law.harvard.edu">
-          <img src="/static/images/lil.svg" alt="Harvard Library Innovation Lab - Logo"/>
+          <img
+            src="/static/images/lil.svg"
+            alt="Harvard Library Innovation Lab - Logo"
+          />
         </a>
 
         <p>
-          <a href="https://github.com/harvard-lil/open-legal-rag">Open Legal RAG</a> is an open-source 
-          experiment by the <a href="https://lil.law.harvard.edu">Harvard Library Innovation Lab</a>.<br>
+          <a href="https://github.com/harvard-lil/open-legal-rag"
+            >Open Legal RAG</a
+          >
+          is an open-source experiment by the
+          <a href="https://lil.law.harvard.edu"
+            >Harvard Library Innovation Lab</a
+          >.<br />
         </p>
 
         <p>Illustration was created with the assistance of DALL·E 3.</p>
       </footer>
     </main>
 
-    <dialog data-dialog="settings" class="settings">
-      <button class="close">Close</button>
-      <h2>Settings</h2>
-
-      <form>
-        <label for="model">Model</label>
-        <select id="model" name="model">
-          {% for model in available_models %}
-          <option value="{{ model }}" {% if model == best_default_model %}selected{% endif %}>{{ model }}</option>
-          {% endfor %}
-        </select>
-
-        <label for="temperature">Temperature</label>
-        <select id="temperature" name="temperature">
-          {% for i in range(0, 21) %}
-          <option value="{{ i / 10 }}">{{ i / 10}}</option>
-          {% endfor %}
-        </select>
-
-        <label for="max_tokens">Max tokens</label>
-        <input type="number" name="max_tokens" id="max_tokens" value="" placeholder="Default">
-      </form>
-    </dialog>
-
-    <dialog data-dialog="inspect" class="inspect">
-      <button class="close">Close</button>
-      <h2>Inspect Session</h2>
-    </dialog>
-
+    <settings-dialog></settings-dialog>
+    <inspect-dialog></inspect-dialog>
   </body>
 </html>

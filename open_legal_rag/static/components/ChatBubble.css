@@ -1,2 +1,68 @@
 chat-bubble {
 }
+
+body > main #chat #chat-conversation .bubble {
+  display: block;
+  width: fit-content;
+  max-width: 80%;
+  margin-left: auto;
+  background-color: var(--background-);
+  padding: 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5rem;
+}
+
+body > main #chat #chat-conversation .bubble.user {
+  margin-left: unset;
+  margin-right: auto;
+  background-color: var(--color);
+  color: var(--background);
+}
+
+body > main #chat #chat-conversation .bubble.ai .text {
+  white-space: pre-line;
+}
+
+body > main #chat #chat-conversation .bubble.source .text * {
+  display: block;
+}
+
+body > main #chat #chat-conversation .bubble code {
+  display: block;
+  padding: 1rem;
+  background-color: var(--background);
+  border-radius: 0.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+body > main #chat #chat-conversation .bubble .actions button {
+  background-color: transparent;
+  color: var(--color);
+  text-decoration: underline;
+  font-weight: normal;
+  padding-top: 0rem;
+  padding-bottom: 0rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+body > main #chat #chat-conversation .bubble .actions button:hover {
+  color: var(--color-);
+  text-decoration: none;
+}
+
+body > main #chat #chat-conversation .bubble .actions button:disabled {
+  background-color: transparent;
+  color: var(--color--);
+  text-decoration: none;
+}
+
+body > main #chat #chat-conversation .bubble .model {
+  font-weight: normal;
+  font-style: italic;
+  margin-bottom: 0.5rem;
+  color: var(--color--);
+}
