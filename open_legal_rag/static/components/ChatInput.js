@@ -1,14 +1,31 @@
 import { state } from "/static/state.js";
 
+/**
+ * UI Element containing:
+ * - Main text input (message)
+ * - "Ask" button
+ * - "Stop" button
+ * - "Settings" button
+ * - "Inspect" button
+ *
+ * Automatically populates:
+ * - `state.message` (on key up)
+ * - `state.processing` (on click on "Ask")
+ *
+ * Automatically enable / disable relevant inputs based on app state.
+ */
 export class ChatInput extends HTMLElement {
-  /** Holds interval function calling stateCheck */
+  /** Holds reference to interval function calling `this.stateCheck` */
   stateCheckInterval = null;
 
-  /** Reference to form > textarea */
+  /** Reference to `form > textarea` */
   inputTextAreaRef = null;
 
-  /** Reference to form > .actions > button[data-action="stop-completion"] */
-  stopCompletionButtonRef = null;
+  /** Reference to `form > .actions > button[data-action="stop"]` */
+  stopButtonRef = null;
+
+  /** Reference to `form > .actions > button[data-action="ask"] */
+  askButtonRef = null;
 
   connectedCallback() {
     // Enforce singleton
@@ -20,12 +37,10 @@ export class ChatInput extends HTMLElement {
 
     // Grab shared element references
     this.inputTextAreaRef = this.querySelector("textarea");
+    this.stopButtonRef = this.querySelector(`button[data-action="stop"]`);
+    this.askButtonRef = this.querySelector(`button[data-action="ask"]`);
 
-    this.stopCompletionButtonRef = this.querySelector(
-      `button[data-action="stop-completion"]`
-    );
-
-    // Event listeners for open-xyz (dialog triggers)
+    // Event listeners for Settings / Inspect dialogs
     for (const dialogName of ["settings", "inspect"]) {
       const button = this.querySelector(
         `button[data-action="open-${dialogName}"]`
@@ -37,9 +52,23 @@ export class ChatInput extends HTMLElement {
       });
     }
 
-    // Event listener for stop-completion (stops processing)
-    this.stopCompletionButtonRef.addEventListener("click", (e) => {
+    // Event listener for "Stop"
+    this.stopButtonRef.addEventListener("click", (e) => {
+      e.preventDefault();
       state.processing = false;
+    });
+
+    // Event listener for "Ask"
+    this.askButtonRef.addEventListener("click", (e) => {
+      e.preventDefault();
+      state.processing = true;
+      document.querySelector("chat-flow").ask();
+    });
+
+    // Event listener to capture text input (message)
+    this.inputTextAreaRef.addEventListener("keyup", (e) => {
+      e.preventDefault();
+      state.message = this.inputTextAreaRef.value.trim();
     });
 
     // Check every 100ms what parts of this component need to be disabled
@@ -52,22 +81,39 @@ export class ChatInput extends HTMLElement {
 
   /**
    * Determines what parts of this component need to be disabled based on app state.
+   * To be called periodically.
+   * @returns {void}
    */
   stateCheck = () => {
-    // Textarea: disabled while processing
+    // Input textarea: disabled while processing
     if (state.processing) {
       this.inputTextAreaRef.setAttribute("disabled", "disabled");
       this.inputTextAreaRef.value = "Please wait ...";
     } else {
       this.inputTextAreaRef.removeAttribute("disabled");
-      this.inputTextAreaRef.value = "";
+    }
+
+    // "Ask" button is enabled when:
+    // - A message was provided in textarea
+    // - A model was picked
+    // - A temperature was picked
+    // - App is not processing
+    if (
+      !state.processing &&
+      state.model &&
+      state.temperature != null &&
+      state.message !== ""
+    ) {
+      this.askButtonRef.removeAttribute("disabled");
+    } else {
+      this.askButtonRef.setAttribute("disabled", "disabled");
     }
 
     // "Stop" button: enabled while processing
     if (state.processing) {
-      this.stopCompletionButtonRef.removeAttribute("disabled");
+      this.stopButtonRef.removeAttribute("disabled");
     } else {
-      this.stopCompletionButtonRef.setAttribute("disabled", "disabled");
+      this.stopButtonRef.setAttribute("disabled", "disabled");
     }
   };
 
@@ -82,8 +128,8 @@ export class ChatInput extends HTMLElement {
       <div class="actions">
         <button class="hollow" data-action="open-settings">Settings</button>
         <button class="hollow" data-action="open-inspect">Inspect</button>
-        <button class="hollow" data-action="stop-completion" disabled>Stop</button>
-        <button class="ask" disabled>Ask</button>
+        <button class="hollow" data-action="stop" disabled>Stop</button>
+        <button class="ask" data-action="ask"disabled>Ask</button>
       </div>
     </form>
     `;

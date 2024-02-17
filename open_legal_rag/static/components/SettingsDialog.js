@@ -8,6 +8,32 @@ export class SettingsDialog extends HTMLElement {
     }
 
     this.renderInnerHTML();
+
+    // Event listener for "model" select
+    this.querySelector("#model").addEventListener("change", (e) => {
+      if (state.availableModels.includes(e.target.value)) {
+        state.model = e.target.value;
+      }
+    });
+
+    // Event listener for "temperature" select
+    this.querySelector("#temperature").addEventListener("change", (e) => {
+      const temperature = parseFloat(e.target.value) * 10;
+
+      if (temperature < 0 || temperature > 20) {
+        return;
+      }
+
+      state.temperature = (temperature / 10).toFixed(1);
+    });
+
+    // Event listener for "max_tokens"
+    this.querySelector("#max_tokens").addEventListener("keyup", (e) => {
+      state.maxTokens = parseInt(e.target.value);
+    });
+
+    // Event listener for "close"
+    this.querySelector(".close").addEventListener("click", this.close);
   }
 
   /**

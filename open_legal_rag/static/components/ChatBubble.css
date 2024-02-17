@@ -1,7 +1,4 @@
 chat-bubble {
-}
-
-body > main #chat #chat-conversation .bubble {
   display: block;
   width: fit-content;
   max-width: 80%;
@@ -13,22 +10,22 @@ body > main #chat #chat-conversation .bubble {
   line-height: 1.5rem;
 }
 
-body > main #chat #chat-conversation .bubble.user {
+chat-bubble[type="user"] {
   margin-left: unset;
   margin-right: auto;
   background-color: var(--color);
   color: var(--background);
 }
 
-body > main #chat #chat-conversation .bubble.ai .text {
+chat-bubble[type="ai"] .text {
   white-space: pre-line;
 }
 
-body > main #chat #chat-conversation .bubble.source .text * {
+chat-bubble[type="sources"] .text * {
   display: block;
 }
 
-body > main #chat #chat-conversation .bubble code {
+chat-bubble code {
   display: block;
   padding: 1rem;
   background-color: var(--background);
@@ -38,7 +35,7 @@ body > main #chat #chat-conversation .bubble code {
   font-size: 0.9rem;
 }
 
-body > main #chat #chat-conversation .bubble .actions button {
+chat-bubble .actions button {
   background-color: transparent;
   color: var(--color);
   text-decoration: underline;
@@ -49,18 +46,18 @@ body > main #chat #chat-conversation .bubble .actions button {
   padding-right: 0.5rem;
 }
 
-body > main #chat #chat-conversation .bubble .actions button:hover {
+chat-bubble .actions button:hover {
   color: var(--color-);
   text-decoration: none;
 }
 
-body > main #chat #chat-conversation .bubble .actions button:disabled {
+chat-bubble .actions button:disabled {
   background-color: transparent;
   color: var(--color--);
   text-decoration: none;
 }
 
-body > main #chat #chat-conversation .bubble .model {
+chat-bubble .model {
   font-weight: normal;
   font-style: italic;
   margin-bottom: 0.5rem;
