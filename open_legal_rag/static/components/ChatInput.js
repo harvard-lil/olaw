@@ -60,7 +60,7 @@ export class ChatInput extends HTMLElement {
     // Event listener for "Stop"
     this.stopButtonRef.addEventListener("click", (e) => {
       e.preventDefault();
-      document.querySelector("chat-flow").stop();
+      document.querySelector("chat-flow").stopStreaming();
     });
 
     // Event listener to capture text input (message)
@@ -95,9 +95,10 @@ export class ChatInput extends HTMLElement {
     // - A message was provided
     // - A model was picked
     // - A temperature was picked
-    // - App is not processing
+    // - App is not processing / streaming
     if (
       !state.processing &&
+      !state.streaming &&
       state.model &&
       state.temperature != null &&
       state.message
@@ -107,8 +108,8 @@ export class ChatInput extends HTMLElement {
       this.askButtonRef.setAttribute("disabled", "disabled");
     }
 
-    // "Stop" button: enabled while processing
-    if (state.processing) {
+    // "Stop" button: enabled while streaming
+    if (state.streaming) {
       this.stopButtonRef.removeAttribute("disabled");
     } else {
       this.stopButtonRef.setAttribute("disabled", "disabled");

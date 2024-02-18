@@ -10,19 +10,11 @@ chat-bubble {
   line-height: 1.5rem;
 }
 
-chat-bubble[type="user"] {
-  margin-left: unset;
-  margin-right: auto;
-  background-color: var(--color);
-  color: var(--background);
-}
-
-chat-bubble[type="ai"] .text {
-  white-space: pre-line;
-}
-
-chat-bubble[type="sources"] .text * {
-  display: block;
+chat-bubble .actor {
+  font-weight: normal;
+  font-style: italic;
+  margin-bottom: 0.5rem;
+  color: var(--color--);
 }
 
 chat-bubble code {
@@ -57,9 +49,25 @@ chat-bubble .actions button:disabled {
   text-decoration: none;
 }
 
-chat-bubble .model {
-  font-weight: normal;
-  font-style: italic;
-  margin-bottom: 0.5rem;
-  color: var(--color--);
+chat-bubble[type="user"] {
+  margin-left: unset;
+  margin-right: auto;
+  background-color: var(--color);
+  color: var(--background);
+}
+
+chat-bubble[type="ai"] .text {
+  white-space: pre-line;
+}
+
+chat-bubble[type="sources"] .text {
+  margin-bottom: 1rem;
+}
+
+chat-bubble[type="sources"] .actor span {
+  text-transform: capitalize;
+}
+
+chat-bubble[type="sources"] .text * {
+  display: block;
 }

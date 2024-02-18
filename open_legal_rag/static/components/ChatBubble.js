@@ -12,6 +12,7 @@ import { state } from "/static/state.js";
  * - "sources": Message listing sources (state.searchResults)
  *
  * Uses app state + type to determine what contents to render.
+ *
  */
 export class ChatBubble extends HTMLElement {
   connectedCallback() {
@@ -44,7 +45,7 @@ export class ChatBubble extends HTMLElement {
         });
 
         // Event listener for the "reject" button:
-        rejectButton.addEventListener("reject", (e) => {
+        rejectButton.addEventListener("click", (e) => {
           confirmButton.setAttribute("disabled", "disabled");
           rejectButton.setAttribute("disabled", "disabled");
           document.querySelector("chat-flow").streamCompletion();
@@ -81,7 +82,7 @@ export class ChatBubble extends HTMLElement {
    */
   renderAIBubble = () => {
     this.innerHTML = /*html*/ `
-    <p class="model">${this.sanitizeString(state.model)}</p>
+    <p class="actor">${this.sanitizeString(state.model)}</p>
     <p class="text"></p>
     `;
   };
@@ -92,7 +93,7 @@ export class ChatBubble extends HTMLElement {
    */
   renderAnalyzingRequestBubble = () => {
     this.innerHTML = /*html*/ `
-    <p class="model">System</p>
+    <p class="actor">System</p>
     <p class="text">The chatbot is trying to identify a legal question in your request.</p>
     `;
   };
@@ -106,7 +107,7 @@ export class ChatBubble extends HTMLElement {
     const searchStatement = this.sanitizeString(state.searchStatement);
 
     this.innerHTML = /*html*/ `
-    <p class="model">${this.sanitizeString(state.model)}</p>
+    <p class="actor">${this.sanitizeString(state.model)}</p>
     <p class="text">
       The chatbot detected a legal question.<br/> 
       Run the following query against ${searchTargetName}?<br>
@@ -142,13 +143,12 @@ export class ChatBubble extends HTMLElement {
           [${refTag}] ${name} (${year})
         </a>
         <span>${court}</span>
-        <em>Source: CourtListener.com</em>
       </p>
       `;
     }
 
     this.innerHTML = /*html*/ `
-    <p class="model">${searchTargetName}</p>
+    <p class="actor">Source: <span>${searchTargetName}</span></p>
     ${sourcesText}
     `;
   };

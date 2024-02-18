@@ -43,15 +43,17 @@ export class ChatFlow extends HTMLElement {
 
     if (!message || !model || temperature === null) {
       this.addBubble("error");
+      this.end();
       return;
     }
+
+    // Block UI
+    state.processing = true;
 
     // Inject user message
     this.addBubble("user");
 
-    // Block UI and inject "analyzing-request" message
-    state.processing = true;
-
+    // Inject "analyzing-request" message
     await new Promise((resolve) => setTimeout(resolve, 500));
     this.addBubble("analyzing-request");
 
@@ -72,6 +74,7 @@ export class ChatFlow extends HTMLElement {
     } catch (err) {
       console.error(err);
       this.addBubble("error");
+      this.end();
       return;
     }
 
@@ -90,11 +93,20 @@ export class ChatFlow extends HTMLElement {
   };
 
   /**
-   * Stops processing.
+   * Stops streaming.
    * @returns {void}
    */
-  stop = () => {
+  stopStreaming = () => {
+    state.streaming = false;
+  };
+
+  /**
+   * Ends System/AI turn, goes back to user for input.
+   * @returns {void}
+   */
+  end = () => {
     state.processing = false;
+    document.querySelector("chat-input textarea").value = "";
   };
 
   /**
@@ -122,8 +134,6 @@ export class ChatFlow extends HTMLElement {
    * @returns {Promise<void>}
    */
   search = async () => {
-    let totalResults = 0;
-
     // Compile payload
     const searchStatement = state.searchStatement;
     const searchTarget = state.searchTarget;
@@ -138,6 +148,8 @@ export class ChatFlow extends HTMLElement {
     // - Inject "sources" bubble if necessary
     // - In any case: start streaming response
     try {
+      let totalResults = 0;
+
       const response = await fetch("/api/search", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -147,9 +159,11 @@ export class ChatFlow extends HTMLElement {
         }),
       });
 
-      state.searchResults = await response.json();
+      if (response.status !== 200) {
+        throw new Error((await response.json())?.error);
+      }
 
-      let totalResults = 0;
+      state.searchResults = await response.json();
 
       for (const key of state.availableSearchTargets) {
         totalResults += state.searchResults[key]?.length;
@@ -158,10 +172,11 @@ export class ChatFlow extends HTMLElement {
       if (totalResults >= 0) {
         this.addBubble("sources");
       }
-
-      this.streamCompletion();
     } catch (err) {
+      this.addBubble("error");
       console.error(err);
+    } finally {
+      this.streamCompletion();
     }
   };
 
@@ -213,42 +228,47 @@ export class ChatFlow extends HTMLElement {
     } catch (err) {
       this.addBubble("error");
       console.error(err);
+      this.end();
       return;
     }
 
     //
     // Stream text into "ai" bubble as it comes
     //
-    this.addBubble("ai");
-    responseStream = response.body.getReader();
 
-    while (true) {
-      const { done, value } = await responseStream.read();
+    try {
+      state.streaming = true;
+      responseStream = response.body.getReader();
 
-      const textChunk = decoder.decode(value, { stream: true });
-      this.pushAITextChunk(textChunk);
-      output += textChunk;
+      // Inject "ai" bubble to stream into
+      this.addBubble("ai");
 
-      if (done || !state.processing) {
-        break;
+      // Stream
+      while (true) {
+        const { done, value } = await responseStream.read();
+
+        const textChunk = decoder.decode(value, { stream: true });
+        this.pushAITextChunk(textChunk);
+        output += textChunk;
+
+        if (done || !state.streaming) {
+          break;
+        }
       }
+
+      // Add interaction to history
+      state.history.push({ role: "user", content: state.message });
+      state.history.push({ role: "assistant", content: output });
+    } finally {
+      // Clear state of that interaction
+      state.searchStatement = "";
+      state.searchTarget = "";
+      state.searchResults = {};
+      state.message = "";
+
+      state.streaming = false;
+      this.end();
     }
-
-    // Add interaction to history
-    history.push({ role: "user", content: state.message });
-    history.push({ role: "assistant", content: output });
-
-    // Clear state of that interaction
-    state.searchStatement = "";
-    state.searchTarget = "";
-    state.searchResults = {};
-    state.message = "";
-
-    // Clear text input
-    document.querySelector("chat-input textarea").value = "";
-
-    // Stop processing / unlock UI
-    state.processing = false;
   };
 
   /**

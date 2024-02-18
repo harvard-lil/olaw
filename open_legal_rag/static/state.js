@@ -1,6 +1,7 @@
 /**
  * @typedef {object} OpenLegalRagState - App-wide "state". All components are assumed to be able to read and write from this object.
  * @property {boolean} processing - If `true`, the app is considered "busy". Used to control UI state.
+ * @property {boolean} streaming - If `true`, the app is currently streaming content. Used to control UI state.
  * @property {{role: string, content: string}[]} history - Keeps track of "basic" chat history. To be fed back to the API with each exchange.
  * @property {string[]} availableModels - List of models that can be used.
  * @property {string} defaultModel - Model to be used by default.
@@ -19,6 +20,7 @@
  */
 export const state = {
   processing: false,
+  streaming: false,
   history: [],
   availableModels: window.OPEN_LEGAL_RAG_CONST.available_models,
   defaultModel: window.OPEN_LEGAL_RAG_CONST.default_model,
