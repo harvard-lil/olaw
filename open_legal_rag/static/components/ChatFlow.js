@@ -1,10 +1,10 @@
-import { state } from "/static/state.js";
+import { state } from "../state.js";
 
 /**
  * UI Element containing:
  * - List of chat "bubbles" from the user, AI and system.
  *
- * Handles the processing of requests via its `ask()` method.
+ * Handles the processing of requests via its `ask()` and `search()` methods.
  *
  * Automatically populates:
  * - `state.processing`
@@ -13,7 +13,7 @@ import { state } from "/static/state.js";
  * - `state.searchTarget`
  * - `state.searchResults`
  *
- * Automatically enable / disable relevant inputs based on app state.
+ * Automatically enables / disables relevant inputs based on app state.
  */
 export class ChatFlow extends HTMLElement {
   /** Reference to the paragraph with the last "ai" bubble in which text should be streamed. */
@@ -52,6 +52,7 @@ export class ChatFlow extends HTMLElement {
 
     // Inject user message
     this.addBubble("user");
+    state.log(state.message, "User sent a message");
 
     // Inject "analyzing-request" message
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -70,7 +71,6 @@ export class ChatFlow extends HTMLElement {
       if (data?.search_statement && data?.search_target) {
         state.searchStatement = data.search_statement;
         state.searchTarget = data.search_target;
-      } else {
       }
     } catch (err) {
       console.error(err);
@@ -83,12 +83,22 @@ export class ChatFlow extends HTMLElement {
     // - Inject "confirm-search" bubble
     // - Interaction with "confirm-search" will determine next step (search() / streamCompletion())
     if (state.searchStatement && state.searchTarget) {
+      state.log(
+        "Found a legal question. Awaiting for user confirmation before performing search.",
+        "/api/extract-search-statement"
+      );
+
       this.addBubble("confirm-search");
     }
     // If no legal question was asked:
     // - Inject "ai" bubble
     // - Start streaming completion
     else {
+      state.log(
+        "Did not find legal question. Starts text completion.",
+        "/api/extract-search-statement"
+      );
+
       this.streamCompletion();
     }
   };
@@ -98,6 +108,7 @@ export class ChatFlow extends HTMLElement {
    * @returns {void}
    */
   stopStreaming = () => {
+    state.log("Streaming interrupted by user.");
     state.streaming = false;
   };
 
@@ -165,6 +176,7 @@ export class ChatFlow extends HTMLElement {
       }
 
       state.searchResults = await response.json();
+      state.log(JSON.stringify(state.searchResults, null, 2), "/api/search");
 
       for (const key of state.availableSearchTargets) {
         totalResults += state.searchResults[key]?.length;
@@ -236,7 +248,6 @@ export class ChatFlow extends HTMLElement {
     //
     // Stream text into "ai" bubble as it comes
     //
-
     try {
       state.streaming = true;
       responseStream = response.body.getReader();
@@ -257,7 +268,8 @@ export class ChatFlow extends HTMLElement {
         }
       }
 
-      // Add interaction to history
+      // Log and add interaction to history
+      state.log(output, "/api/complete");
       state.history.push({ role: "user", content: state.message });
       state.history.push({ role: "assistant", content: output });
     } finally {

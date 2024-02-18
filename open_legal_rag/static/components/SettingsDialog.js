@@ -1,4 +1,4 @@
-import { state } from "/static/state.js";
+import { state } from "../state.js";
 
 /**
  * UI Element containing:

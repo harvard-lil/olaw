@@ -1,4 +1,4 @@
-import { state } from "/static/state.js";
+import { state } from "../state.js";
 
 /**
  * UI Element representing a chat bubble.
@@ -12,7 +12,6 @@ import { state } from "/static/state.js";
  * - "sources": Message listing sources (state.searchResults)
  *
  * Uses app state + type to determine what contents to render.
- *
  */
 export class ChatBubble extends HTMLElement {
   connectedCallback() {
@@ -39,15 +38,27 @@ export class ChatBubble extends HTMLElement {
 
         // Event listener for the "confirm" button
         confirmButton.addEventListener("click", (e) => {
+          state.log(
+            "User accepted suggested search.",
+            "/api/extract-search-statement"
+          );
+
           confirmButton.setAttribute("disabled", "disabled");
           rejectButton.setAttribute("disabled", "disabled");
+
           document.querySelector("chat-flow").search();
         });
 
         // Event listener for the "reject" button:
         rejectButton.addEventListener("click", (e) => {
+          state.log(
+            "User rejected suggested search.",
+            "/api/extract-search-statement"
+          );
+
           confirmButton.setAttribute("disabled", "disabled");
           rejectButton.setAttribute("disabled", "disabled");
+
           document.querySelector("chat-flow").streamCompletion();
         });
 

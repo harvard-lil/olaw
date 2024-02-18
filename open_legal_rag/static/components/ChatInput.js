@@ -1,4 +1,4 @@
-import { state } from "/static/state.js";
+import { state } from "../state.js";
 
 /**
  * UI Element containing:
@@ -11,7 +11,7 @@ import { state } from "/static/state.js";
  * Automatically populates:
  * - `state.message` (on key up)
  *
- * Automatically enable / disable relevant inputs based on app state.
+ * Automatically enables / disables relevant inputs based on app state.
  */
 export class ChatInput extends HTMLElement {
   /** Holds reference to interval function calling `this.stateCheck` */

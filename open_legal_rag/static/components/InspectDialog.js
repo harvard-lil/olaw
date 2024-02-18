@@ -1,5 +1,11 @@
-import { state } from "/static/state.js";
+import { state } from "../state.js";
 
+/**
+ * UI Element containing:
+ * - Journal of interactions between user and API
+ *
+ * Hoists `log()` method to state via `state.log()`.
+ */
 export class InspectDialog extends HTMLElement {
   connectedCallback() {
     // Enforce singleton
@@ -13,10 +19,41 @@ export class InspectDialog extends HTMLElement {
 
     // Event listener for "close"
     this.querySelector(".close").addEventListener("click", this.close);
+
+    // Hoist log function to state.log
+    state.log = this.log;
   }
 
   /**
-   * Adds text completion prompt transcript to logs
+   * Add given text to logs.
+   * Automatically adds system info if state.processing is `true`.
+   * @param {String} text - Text to be logged.
+   * @param {?String} title - Title for log section.
+   * @returns {void}
+   */
+  log = (text, title = "") => {
+    let output = "";
+
+    output += "----------------------------------------\n";
+    output += title ? `${title}\n` : ``;
+    output += `${new Date()}\n`;
+    output += "----------------------------------------\n";
+
+    if (state.processing) {
+      output += `Model: ${state.model}\n`;
+      output += `Temperature: ${state.temperature}\n`;
+      output += `Search Statement: ${state.searchStatement}\n`;
+      output += `Search Target: ${state.searchTarget}\n\n`;
+    }
+
+    output += `${text}\n\n`;
+
+    this.querySelector("#logs").textContent += output;
+    console.log(output);
+  };
+
+  /**
+   * Adds text completion prompt transcript to logs.
    * @return {void}
    */
   logTextCompletionPrompt = () => {
@@ -28,28 +65,12 @@ export class InspectDialog extends HTMLElement {
   };
 
   /**
-   * Adds search statement extraction prompt transcript to logs
+   * Adds search statement extraction prompt transcript to logs.
    * @returns {void}
    */
   logExtractSearchStatementPrompt = () => {
     let prompt = state.extractSearchStatementPrompt.trim();
     this.log(prompt, "Transcript of the search statement extraction prompt");
-  };
-
-  /**
-   * Add text to log
-   * @returns {void}
-   */
-  log = (text, title = "") => {
-    let output = "";
-
-    output += "----------------------------------------\n";
-    output += title ? `${title}\n` : ``;
-    output += `${new Date()}\n`;
-    output += "----------------------------------------\n";
-    output += `${text}\n\n`;
-
-    this.querySelector("textarea").textContent += output;
   };
 
   /**
@@ -74,7 +95,9 @@ export class InspectDialog extends HTMLElement {
       <button class="close">Close</button>
       <h2>Inspect Session</h2>
 
-      <textarea disabled></textarea>
+      <p>This information is also available in the browser's JavaScript console.</p>
+
+      <div id="logs"></div>
     </dialog>
     `;
   };

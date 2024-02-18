@@ -1,3 +1,5 @@
+const constants = window.OPEN_LEGAL_RAG_CONST;
+
 /**
  * @typedef {object} OpenLegalRagState - App-wide "state". All components are assumed to be able to read and write from this object.
  * @property {boolean} processing - If `true`, the app is considered "busy". Used to control UI state.
@@ -9,6 +11,7 @@
  * @property {?string} model - Latest model picked by the user.
  * @property {?Number} maxTokens - Latest value picked by the user for "max tokens".
  * @property {{role: string, content: string}[]} history - Keeps track of "basic" chat history. To be fed back to the API with each exchange.
+ * @property {?function} log - Shortcut for InspectDialog.log(text, title).
  * @property {string} basePrompt - Transcript of the base prompt.
  * @property {string} historyPrompt - Transcript of the history part of the prompt.
  * @property {string} ragPrompt - Transcript of the RAG (context) part of the prompt.
@@ -17,10 +20,9 @@
  * @property {string} defaultModel - Model to be used by default.
  * @property {string[]} availableSearchTargets - List of valid search targets.
  */
-const constants = window.OPEN_LEGAL_RAG_CONST;
 
 /**
- * Basic app-wide "state"
+ * Basic "state" object used across the app to share data.
  * @type {OpenLegalRagState}
  */
 export const state = {
@@ -30,10 +32,12 @@ export const state = {
   searchTarget: "",
   searchResults: {},
   message: null,
-  model: window.OPEN_LEGAL_RAG_CONST.default_model,
+  model: constants.default_model,
   temperature: 0.0,
   maxTokens: null,
   history: [],
+
+  log: () => {},
 
   basePrompt: constants.text_completion_base_prompt,
   historyPrompt: constants.text_completion_history_prompt,
