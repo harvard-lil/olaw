@@ -1,4 +1,5 @@
 chat-input {
+  display: block;
   border-bottom: 1px solid var(--background--);
   padding: 2rem;
   padding-left: 0rem;

@@ -7,7 +7,22 @@ chat-bubble {
   padding: 1rem;
   border-radius: 0.25rem;
   margin-bottom: 1.5rem;
+  margin-right: 1rem;
   line-height: 1.5rem;
+  position: relative;
+}
+
+chat-bubble::before {
+  content: "";
+  width: 0px;
+  height: 0px;
+  position: absolute;
+  top: 0rem;
+  right: -1rem;
+  border-left: 0.75rem solid var(--background-);
+  border-right: 0.75rem solid transparent;
+  border-top: 0.75rem solid var(--background-);
+  border-bottom: 0.75rem solid transparent;
 }
 
 chat-bubble .actor {
@@ -54,6 +69,16 @@ chat-bubble[type="user"] {
   margin-right: auto;
   background-color: var(--color);
   color: var(--background);
+  margin-right: unset;
+  margin-left: 1rem;
+}
+
+chat-bubble[type="user"]::before {
+  right: unset;
+  left: -1rem;
+  border-top-color: var(--color);
+  border-left-color: var(--color);
+  rotate: 90deg;
 }
 
 chat-bubble[type="ai"] .text {

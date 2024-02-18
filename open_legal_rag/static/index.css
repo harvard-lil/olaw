@@ -55,10 +55,11 @@ a:hover {
 /*------------------------------------------------------------------------------
  * Forms (generic)
  -----------------------------------------------------------------------------*/
- label {
+label {
   display: block;
   margin-bottom: 0.35rem;
   font-weight: normal;
+  margin-top: 1rem;
 }
 
 select, input[type="text"], input[type="number"], textarea {
@@ -135,7 +136,6 @@ button.hollow:disabled {
   text-decoration: none;
 }
 
-
 /*------------------------------------------------------------------------------
  * Dialog (generic)
  -----------------------------------------------------------------------------*/
@@ -168,6 +168,10 @@ dialog button.close {
   text-decoration: underline;
 }
 
+dialog button.close:hover {
+  text-decoration: none;
+}
+
 dialog h2 {
   position: relative;
   border-bottom: 1px solid var(--color-);
@@ -176,6 +180,7 @@ dialog h2 {
   margin-bottom: 1.5rem;
   font-weight: normal;
 }
+
 
 /*------------------------------------------------------------------------------
  * Layout
@@ -200,9 +205,6 @@ body > main {
   }
 }
 
-/*------------------------------------------------------------------------------
- * Chat UI
- -----------------------------------------------------------------------------*/
 body > main #chat {
   display: flex;
   height: 100%;
@@ -210,9 +212,6 @@ body > main #chat {
   justify-content: space-between;
 }
 
-/*------------------------------------------------------------------------------
- * Footer
- -----------------------------------------------------------------------------*/
 body > main footer {
   padding-top: 1rem;
   padding-bottom: 1rem;

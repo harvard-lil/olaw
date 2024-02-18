@@ -1,2 +1,27 @@
 inspect-dialog {
+  display: block;
+}
+
+inspect-dialog dialog textarea {
+  min-height: 20rem;
+}
+
+inspect-dialog dialog textarea {
+  color: var(--color);
+  background-color: var(--background);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+@media (max-width: 759px) {
+  inspect-dialog {
+    height: auto;
+  }
+
+  inspect-dialog dialog {
+    max-height: unset
+  }
+
+  inspect-dialog dialog textarea {
+    height: 80dvh;
+  }
 }

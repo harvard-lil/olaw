@@ -70,6 +70,7 @@ export class ChatFlow extends HTMLElement {
       if (data?.search_statement && data?.search_target) {
         state.searchStatement = data.search_statement;
         state.searchTarget = data.search_target;
+      } else {
       }
     } catch (err) {
       console.error(err);
