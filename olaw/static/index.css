@@ -1,0 +1,230 @@
+:root {
+  --font-family: 'Helvetica Neue', Helvetica, Arial, Sans-serif;
+  --font-family-alt: Georgia, Times, "Times New Roman", serif; 
+
+  --background: #F7F6F2;
+  --background-: #e2e2e2;
+  --background--: #cfcfcf;
+ 
+  --color: #121212;
+  --color-: #2a2a2a;
+  --color--: #4c4c4c;
+
+  --primary: #F4D24B;
+  --primary-: #D6B42D;
+  --primary--: #bb9c20;
+}
+
+* {
+  padding: 0px;
+  margin: 0px;
+  box-sizing: border-box;
+  outline-color: var(--primary-);
+}
+
+html {
+  color: var(--color);
+  font-size: 16px;
+  font-family: var(--font-family);
+  font-weight: normal;
+  background-color: var(--background);
+}
+
+@media (max-width: 381px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+body {
+}
+
+a {
+  color: var(--color--);
+}
+
+a:hover {
+  color: var(--color--);
+  text-decoration: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/*------------------------------------------------------------------------------
+ * Forms (generic)
+ -----------------------------------------------------------------------------*/
+label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: normal;
+  margin-top: 1rem;
+}
+
+select, input[type="text"], input[type="number"], textarea {
+  display: block;
+  width: 100%;
+  padding: 0.45rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--color--);
+  border-radius: 0.25rem;
+  margin-bottom: 0.65rem;
+  -moz-appearance: none; 
+  -webkit-appearance: none; 
+  appearance: none;
+  font-family: var(--font-family);
+}
+
+textarea {
+  font-size: 1rem;
+  padding: 0.75rem;
+  resize: none;
+  line-height: 1.5rem;
+}
+
+select {
+	background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23121212%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+	background-repeat: no-repeat, repeat;
+	background-position: right .7em top 50%, 0 0;
+	background-size: .65em auto, 100%;
+}
+
+button {
+  background-color: var(--color);
+  color: var(--background);
+  font-family: var(--font-family);
+  font-weight: bold;
+  padding: 0.75rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  border: 0px;
+  transition: all 0.25s ease-in-out;
+  cursor: pointer;
+}
+
+button.hollow {
+  background-color: transparent;
+  font-weight: normal;
+  text-decoration: underline;
+  color: var(--color-);
+}
+
+button span {
+  font-weight: bold;
+}
+
+button:not(:disabled):hover {
+  text-decoration: underline;
+}
+
+button.hollow:not(:disabled):hover {
+  text-decoration: none;
+}
+
+button:disabled {
+  background-color: var(--color-);
+  cursor: not-allowed;
+}
+
+button.hollow:disabled {
+  background-color: transparent;
+  font-weight: normal;
+  color: var(--color--);
+  text-decoration: none;
+}
+
+/*------------------------------------------------------------------------------
+ * Dialog (generic)
+ -----------------------------------------------------------------------------*/
+ dialog {
+  width: 85ch;
+  max-width: 90%;
+  max-height: 80dvh;
+  margin: auto;
+  border: 0px;
+  padding: 2rem;
+  padding-top: 1rem;
+  border-radius: 0.25rem;
+  background-color: var(--color);
+  color: var(--background);
+  border: 1px solid var(--color--);
+}
+
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+/* "Close" button */
+dialog button.close {
+  position: absolute;
+  top: 1.65rem;
+  right: 1.5rem;
+  z-index: 2;
+  background-color: transparent;
+  color: var(--background);
+  text-decoration: underline;
+}
+
+dialog button.close:hover {
+  text-decoration: none;
+}
+
+dialog h2 {
+  position: relative;
+  border-bottom: 1px solid var(--color-);
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  font-weight: normal;
+}
+
+
+/*------------------------------------------------------------------------------
+ * Layout
+ -----------------------------------------------------------------------------*/
+body > main {
+  width: 100%;
+
+  height: 100vh;
+  height: 100dvh;
+  max-width: 80ch;
+
+  margin: auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+@media (max-width: 759px) {
+  body > main {
+    padding: 1rem;
+  }
+}
+
+body > main #chat {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+body > main footer {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  text-align: center;
+}
+
+body > main footer p {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  line-height: 1.5rem;
+}
+
+body > main footer img {
+  max-width: 35ch;
+  padding-top: 0.5rem;
+}

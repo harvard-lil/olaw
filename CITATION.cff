@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Cargnelutti
+    given-names: Matteo
+  - family-names: Cushman
+    given-names: Jack
+title: "Open Legal AI Workbench (OLAW)"
+version: 0.0.1
+date-released: 2024-03-06

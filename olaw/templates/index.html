@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <title>Open Legal AI Workbench (OLAW)</title>
+    <meta
+      name="description"
+      content="A Retrieval Augmented Generation Research Workbench for Case Law."
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script>
+      // App-wide consts coming from the back-end
+      window.OPEN_LEGAL_RAG_CONST = {{ app_consts | safe }};
+    </script>
+
+    <link rel="stylesheet" href="/static/index.css" />
+
+    <script type="module" src="/static/components/ChatBubble.js"></script>
+    <link rel="stylesheet" href="/static/components/ChatBubble.css" />
+
+    <script type="module" src="/static/components/ChatFlow.js"></script>
+    <link rel="stylesheet" href="/static/components/ChatFlow.css" />
+
+    <script type="module" src="/static/components/ChatInput.js"></script>
+    <link rel="stylesheet" href="/static/components/ChatInput.css" />
+
+    <script type="module" src="/static/components/InspectDialog.js"></script>
+    <link rel="stylesheet" href="/static/components/InspectDialog.css" />
+
+    <script type="module" src="/static/components/SettingsDialog.js"></script>
+    <link rel="stylesheet" href="/static/components/SettingsDialog.css" />
+  </head>
+
+  <body>
+    <main>
+      <div id="chat">
+        <chat-flow></chat-flow>
+        <chat-input></chat-input>
+      </div>
+
+      <footer>
+        <a href="https://lil.law.harvard.edu">
+          <img
+            src="/static/images/lil.svg"
+            alt="Harvard Library Innovation Lab - Logo"
+          />
+        </a>
+
+        <p>
+          <a href="https://github.com/harvard-lil/olaw">OLAW</a>
+          is an open-source experiment by the
+          <a href="https://lil.law.harvard.edu"
+            >Harvard Library Innovation Lab</a
+          >.<br />
+        </p>
+
+        <p>
+          This is an experimental tool for evaluating legal retrieval software
+          and should not be used for legal advice.
+        </p>
+      </footer>
+    </main>
+
+    <settings-dialog></settings-dialog>
+    <inspect-dialog></inspect-dialog>
+  </body>
+</html>

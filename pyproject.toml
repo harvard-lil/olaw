@@ -1,0 +1,30 @@
+[tool.poetry]
+authors = ["Harvard Library Innovation Lab"]
+description = ""
+license = "MIT"
+name = "olaw"
+package-mode = false
+readme = "README.md"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+click = "^8.1.7"
+flask = "^3.0.0"
+flask-limiter = "^3.5.1"
+html2text = "^2020.1.16"
+ollama = "^0.1.6"
+openai = "^1.11.1"
+python = "^3.11"
+python-dotenv = "^1.0.0"
+requests = "^2.31.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.10.1"
+flake8 = "^6.1.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.black]
+line-length = 100

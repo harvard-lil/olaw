@@ -1,0 +1,6 @@
+{
+  "editor.formatOnSave": true,
+  "python.formatting.provider": "black",
+  "standard.enable": false,
+  "standard.autoFixOnSave": true
+}
