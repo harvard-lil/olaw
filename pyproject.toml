@@ -3,7 +3,6 @@ authors = ["Harvard Library Innovation Lab"]
 description = ""
 license = "MIT"
 name = "olaw"
-package-mode = false
 readme = "README.md"
 version = "0.1.0"
 
