@@ -2,10 +2,13 @@
 
 **AI + Legal APIs**: A Tool-Based Retrieval Augmented Generation Workbench for Legal AI UX Research. 
 
+More info:
+- <a href="https://lil.law.harvard.edu/2024/03/08/announcing-the-open-legal-ai-workbench-olaw/">"Cracking the justice barrier: announcing the Open Legal AI Workbench"</a>. Mar 08 2024 - _lil.law.harvard.edu_
+
 https://github.com/harvard-lil/olaw/assets/625889/65dd61db-42f8-490b-a737-0612d97c5c81
 
-More info:
-> TODO: Link to blog post
+> **Video**: OLAW’s chatbot retrieving court opinions from the CourtListener API to help answer a legal question. 
+> Information is interpreted by the AI model, which may make mistakes.
 
 ---
 
