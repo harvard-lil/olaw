@@ -33,6 +33,8 @@ def post_complete():
         {"role": "assistant", "content": "Bar baz"}
     ]
     ```
+
+    Streams text completion directly from LLM API provider.
     """
     available_models = list_available_models()
 

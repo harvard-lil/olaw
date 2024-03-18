@@ -27,7 +27,7 @@ def list_available_models() -> list:
                     models.append(f"openai/{model.id}")
 
         except Exception:
-            current_app.logger.error("Could not list Open AI models.")
+            current_app.logger.error("Could not list OpenAI models.")
             current_app.logger.error(traceback.format_exc())
 
     # Use case: Ollama

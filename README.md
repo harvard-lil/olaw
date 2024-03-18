@@ -92,7 +92,7 @@ cp .env.example .env
 See details for individual settings in [.env.example](.env.example).
 
 **A few notes:**
-- OLAW can interact with both the [Open AI API](https://platform.openai.com/docs/introduction) and [Ollama](https://ollama.ai) for local inference. 
+- OLAW can interact with both the [OpenAI API](https://platform.openai.com/docs/introduction) and [Ollama](https://ollama.ai) for local inference. 
   - Both can be used at the same time, but at least one is needed. 
   - By default, the program will try to communicate with Ollama's API at `http://localhost:11434`.
   - It is also possible to use OpenAI's client to interact with compatible providers, such as [HuggingFace's Message API](https://huggingface.co/blog/tgi-messages-api) or [vLLM](https://docs.vllm.ai/en/latest/getting_started/quickstart.html#using-openai-completions-api-with-vllm). To do so, set values for both `OPENAI_BASE_URL` and `OPENAI_COMPATIBLE_MODEL` environment variables. 

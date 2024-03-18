@@ -1,7 +1,6 @@
 import os
 
 from flask import current_app, jsonify
-from openai import OpenAI
 
 from olaw.utils import list_available_models, get_limiter
 
