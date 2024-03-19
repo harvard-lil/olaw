@@ -369,8 +369,8 @@ You will also need to edit [`olaw/search_results/__init__.py`](/olaw/search_targ
 
 This project is collaborative at its core and we warmly welcome feedback and contributions.
 
-- [The issues tab](/issues) is a good place to start to report bugs, suggest features or volunteer to contribute to the codebase on a specific issue.
-- Don't hesitate to use [the discussions tab](/discussions) to ask more general questions about this project.
+- [The issues tab](https://github.com/harvard-lil/olaw/issues) is a good place to start to report bugs, suggest features or volunteer to contribute to the codebase on a specific issue.
+- Don't hesitate to use [the discussions tab](https://github.com/harvard-lil/olaw/discussions) to ask more general questions about this project.
 
 
 [☝️ Summary](#summary)
