@@ -305,8 +305,13 @@ export class ChatFlow extends HTMLElement {
 
   /**
    * Automatically scroll to the bottom of the conversation.
+   * Disabled if state.reducedMotion is `true`.
    */
   scrollIntoConversation = () => {
+    if (state.reducedMotion === true) {
+      return;
+    }
+
     this.scroll({
       top: this.scrollHeight,
       left: 0,

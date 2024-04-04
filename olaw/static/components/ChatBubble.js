@@ -84,8 +84,6 @@ export class ChatBubble extends HTMLElement {
     this.innerHTML = /*html*/ `
     <p class="text">${this.sanitizeString(state.message)}</p>
     `;
-
-    this.inspectDialogRef = document.querySelector("inspect-dialog");
   };
 
   /**
