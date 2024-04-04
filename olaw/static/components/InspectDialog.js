@@ -46,10 +46,18 @@ export class InspectDialog extends HTMLElement {
       output += `Search Target: ${state.searchTarget}\n\n`;
     }
 
-    output += `${text}\n\n`;
-
-    this.querySelector("#logs").textContent += output;
-    console.log(output);
+    // Specific handling for data that is JSON-parseable:
+    // Parse it and log it separately so it is rendered as an object by the JS console.
+    try {
+      const data = JSON.parse(text);
+      this.querySelector("#logs").textContent += `${output}${text}\n\n`;
+      console.log(output);
+      console.log(data);
+    } catch (err) {
+      output += `${text}\n\n`;
+      this.querySelector("#logs").textContent += output;
+      console.log(output);
+    }
   };
 
   /**

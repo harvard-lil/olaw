@@ -19,6 +19,7 @@ const constants = window.OPEN_LEGAL_RAG_CONST;
  * @property {string[]} availableModels - List of models that can be used.
  * @property {string} defaultModel - Model to be used by default.
  * @property {string[]} availableSearchTargets - List of valid search targets.
+ * @property {string} reducedMotion - Whether the `prefers-reduced-motion: reduce` directive was detected.
  */
 
 /**
@@ -46,4 +47,8 @@ export const state = {
   availableModels: constants.available_models,
   defaultModel: constants.default_model,
   availableSearchTargets: constants.available_search_targets,
+
+  reducedMotion:
+    window.matchMedia(`(prefers-reduced-motion: reduce)`) === true ||
+    window.matchMedia(`(prefers-reduced-motion: reduce)`).matches === true,
 };
