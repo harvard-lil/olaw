@@ -4,7 +4,7 @@ description = ""
 license = "MIT"
 name = "olaw"
 readme = "README.md"
-version = "0.0.2"
+version = "0.0.3"
 
 [tool.poetry.dependencies]
 click = "^8.1.7"
